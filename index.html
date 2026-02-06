@@ -94,6 +94,7 @@
     .study-filter-btn{padding:6px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;font-size:.78rem;cursor:pointer;white-space:nowrap;color:#666;transition:all .2s}
     .study-filter-btn.active{background:#333;color:#fff;border-color:#333}
     .study-filter-btn .filter-count{margin-left:4px;opacity:.7}
+    .study-sort{margin-bottom:12px}.study-sort select{padding:6px 12px;border:1px solid #ddd;border-radius:8px;font-size:.8rem;background:#fff;color:#555;cursor:pointer}
     .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px 24px;text-align:center;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
     .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
     .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
@@ -217,6 +218,7 @@
   <div class="page" id="page-study">
     <div class="study-deck-name" id="study-deck-name"></div>
     <div class="study-filters" id="study-filters"></div>
+    <div class="study-sort" id="study-sort"></div>
     <div class="study-progress"><span id="study-progress-text">0 / 0</span><div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div></div></div>
     <div class="anki-card" id="anki-card">
       <span class="anki-card-label" id="anki-label">問題</span>
@@ -285,6 +287,8 @@
     <h3>&#x2699; 設定</h3>
     <div class="modal-row"><span>自動再生: 問題表示（秒）</span><input type="number" id="cfg-q-delay" value="3" min="1" max="30"></div>
     <div class="modal-row"><span>自動再生: 答え表示（秒）</span><input type="number" id="cfg-a-delay" value="3" min="1" max="30"></div>
+    <div class="modal-row modal-row-danger" id="delete-deck-row">&#x1f5d1; デッキを削除</div>
+    <div id="delete-deck-section" style="display:none;padding:8px 0"><select id="delete-deck-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;margin-bottom:8px"></select><button class="btn btn-red btn-sm" id="delete-deck-confirm" style="width:100%">削除する</button></div>
     <div class="modal-row modal-row-danger" id="logout-row">&#x1f6aa; ログアウト</div>
     <button class="modal-close" id="settings-close">閉じる</button>
   </div></div>
@@ -300,7 +304,7 @@ db.enablePersistence().catch(()=>{});
 let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
-let isPlaying=false,playTimer=null,editingId=null;
+let isPlaying=false,playTimer=null,editingId=null,studySort=null;
 let isPublicStudy=false,activeHomeTab='my';
 
 /* ========== LS ========== */
@@ -346,7 +350,7 @@ function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='デッキ';renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';resetForm();renderManageSubdecks();renderManageList();renderPublishSection();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
@@ -377,11 +381,11 @@ function renderDeckList(){
   const el=document.getElementById('deck-list');let html='';
   for(const d of decks){
     const dc=deckCards(d.name),inc=countR(dc,'incorrect'),cor=countR(dc,'correct'),und=countR(dc,'understood');
-    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3><div class="deck-meta"><span>${dc.length}枚</span></div><div class="deck-rating-dots">${inc?`<span class="dot-incorrect">&#x2716; ${inc}</span>`:''}${cor?`<span class="dot-correct">&#x2714; ${cor}</span>`:''}${und?`<span class="dot-understood">&#x2605; ${und}</span>`:''}</div></div><div class="deck-card-actions"><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button>${d.name!=='デフォルト'?`<button class="deck-action-btn" data-act="delete" data-deck="${esc(d.name)}" title="削除">&#x1f5d1;</button>`:''}<span class="deck-arrow">&#x276f;</span></div></div>`;
+    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3><div class="deck-meta"><span>${dc.length}枚</span></div><div class="deck-rating-dots">${inc?`<span class="dot-incorrect">&#x2716; ${inc}</span>`:''}${cor?`<span class="dot-correct">&#x2714; ${cor}</span>`:''}${und?`<span class="dot-understood">&#x2605; ${und}</span>`:''}</div></div><div class="deck-card-actions"><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button><span class="deck-arrow">&#x276f;</span></div></div>`;
     for(const sd of d.subdecks){const sc=subdeckCards(d.name,sd);html+=`<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><div><h4>${esc(sd)}</h4><div class="subdeck-meta">${sc.length}枚</div></div><span class="deck-arrow">&#x276f;</span></div>`}
   }
   el.innerHTML=html;
-  el.querySelectorAll('.deck-card').forEach(c=>{c.addEventListener('click',e=>{const t=e.target.closest('[data-act]'),dn=c.dataset.deck;if(t){e.stopPropagation();if(t.dataset.act==='manage')navigateTo('manage',dn);if(t.dataset.act==='delete')deleteDeckAction(dn);if(t.dataset.act==='rename')renameDeckAction(dn)}else navigateTo('study',{deck:dn})})});
+  el.querySelectorAll('.deck-card').forEach(c=>{c.addEventListener('click',e=>{const t=e.target.closest('[data-act]'),dn=c.dataset.deck;if(t){e.stopPropagation();if(t.dataset.act==='manage')navigateTo('manage',dn);if(t.dataset.act==='rename')renameDeckAction(dn)}else navigateTo('study',{deck:dn})})});
   el.querySelectorAll('.subdeck-card').forEach(c=>{c.addEventListener('click',()=>navigateTo('study',{deck:c.dataset.deck,subdeck:c.dataset.subdeck}))});
 }
 
@@ -454,15 +458,21 @@ async function copyPublicDeck(id){
 /* ========== Study ========== */
 function getStudyPool(){
   let pool;if(currentSubdeck)pool=subdeckCards(currentDeck,currentSubdeck);else pool=deckCards(currentDeck);
-  if(studyFilter==='all')return pool;if(studyFilter==='unrated')return pool.filter(c=>!c.lastRating);return pool.filter(c=>c.lastRating===studyFilter);
+  if(studyFilter!=='all'){if(studyFilter==='unrated')pool=pool.filter(c=>!c.lastRating);else pool=pool.filter(c=>c.lastRating===studyFilter)}
+  if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
+  return pool;
 }
 function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()}
 function renderStudyFilters(){
-  if(isPublicStudy){document.getElementById('study-filters').innerHTML='';return}
+  const sortEl=document.getElementById('study-sort');
+  if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
   const pool=currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
-  const fs=[{key:'all',label:'全て',count:pool.length},{key:'incorrect',label:'不正解',count:countR(pool,'incorrect')},{key:'correct',label:'正解',count:countR(pool,'correct')},{key:'understood',label:'理解した',count:countR(pool,'understood')},{key:'unrated',label:'未学習',count:countU(pool)}];
+  const fs=[{key:'all',label:'全',count:pool.length},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'理解',count:countR(pool,'understood')},{key:'unrated',label:'未',count:countU(pool)}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
+  sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option></select>';
+  document.getElementById('study-sort-select').value=studySort||'';
+  document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
 function renderStudyCard(){
   const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),sb=document.getElementById('show-answer-btn'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck');
@@ -484,7 +494,8 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   const r=b.dataset.rating;
   if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
   const card=studyCards[studyIndex];stats.reviews++;stats[r]++;
-  await updateCard(card.id,{lastRating:r});await saveStats();
+  const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
+  await updateCard(card.id,upd);await saveStats();
   studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
   studyCards=getStudyPool();if(studyIndex>=studyCards.length)studyIndex=0;
   renderStudyFilters();renderStudyCard();
@@ -569,7 +580,7 @@ function renderManageList(){
   const dc=deckCards(currentDeck);document.getElementById('manage-card-count').textContent=`カード (${dc.length}枚)`;
   const el=document.getElementById('manage-card-list');
   if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';return}
-  el.innerHTML=dc.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.lastRating==='incorrect')tags+='<span class="card-item-tag tag-incorrect">不正解</span>';if(c.lastRating==='correct')tags+='<span class="card-item-tag tag-correct">正解</span>';if(c.lastRating==='understood')tags+='<span class="card-item-tag tag-understood">理解した</span>';return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
+  el.innerHTML=dc.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.lastRating==='incorrect')tags+='<span class="card-item-tag tag-incorrect">不正解</span>';if(c.lastRating==='correct')tags+='<span class="card-item-tag tag-correct">正解</span>';if(c.lastRating==='understood')tags+='<span class="card-item-tag tag-understood">理解した</span>';if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
   el.querySelectorAll('.card-item-btn').forEach(b=>{b.addEventListener('click',()=>{if(b.dataset.act==='edit')editCardAction(b.dataset.id);if(b.dataset.act==='del')deleteCardAction(b.dataset.id)})});
 }
 
@@ -584,9 +595,11 @@ function renderStats(){document.getElementById('s-total-cards').textContent=card
 document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};await saveStats();renderStats();showToast('リセットしました')});
 
 /* ========== Settings ========== */
-document.getElementById('settings-btn').addEventListener('click',()=>document.getElementById('settings-modal').classList.add('active'));
+document.getElementById('settings-btn').addEventListener('click',()=>{document.getElementById('delete-deck-section').style.display='none';document.getElementById('settings-modal').classList.add('active')});
 document.getElementById('settings-close').addEventListener('click',()=>document.getElementById('settings-modal').classList.remove('active'));
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
+document.getElementById('delete-deck-row').addEventListener('click',()=>{const sec=document.getElementById('delete-deck-section');if(sec.style.display==='none'){sec.style.display='block';const sel=document.getElementById('delete-deck-select');const deletable=decks.filter(d=>d.name!=='デフォルト');if(!deletable.length){showToast('削除できるデッキがありません');sec.style.display='none';return}sel.innerHTML=deletable.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}else{sec.style.display='none'}});
+document.getElementById('delete-deck-confirm').addEventListener('click',()=>{const name=document.getElementById('delete-deck-select').value;if(name)deleteDeckAction(name);document.getElementById('delete-deck-section').style.display='none'});
 
 /* ========== Import/Export ========== */
 document.getElementById('export-btn').addEventListener('click',()=>{const b=new Blob([JSON.stringify({cards,decks,stats,exportDate:new Date().toISOString()},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`ankimaster_${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(u)});
