@@ -87,7 +87,9 @@
     .study-filter-btn{padding:6px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;font-size:.78rem;cursor:pointer;white-space:nowrap;color:#666;transition:all .2s}
     .study-filter-btn.active{background:#333;color:#fff;border-color:#333}
     .study-filter-btn .filter-count{margin-left:4px;opacity:.7}
-    .study-sort{margin-bottom:12px}.study-sort select{padding:6px 12px;border:1px solid #ddd;border-radius:8px;font-size:.8rem;background:#fff;color:#555;cursor:pointer}
+    .study-sort{margin-bottom:12px;display:flex;align-items:center;gap:8px}.study-sort select{padding:6px 12px;border:1px solid #ddd;border-radius:8px;font-size:.8rem;background:#fff;color:#555;cursor:pointer}
+    .study-icon-btn{width:36px;height:36px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;transition:all .2s;flex-shrink:0}
+    .study-icon-btn:hover{background:#f0f0f0}.study-icon-btn.active{background:#e3f2fd;border-color:#2196f3;color:#1565c0}
     .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:32px 24px;text-align:left;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
     .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
     .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
@@ -95,22 +97,12 @@
     .anki-card-text{white-space:pre-wrap;word-break:break-word}
     .anki-divider{width:80%;border:none;border-top:1px solid #e0e0e0;margin:20px 0}
     .anki-answer-section{color:#1565c0}
-    .show-answer-btn{display:block;width:100%;padding:16px;margin-top:20px;background:#e0e0e0;border:none;border-radius:8px;font-size:1rem;cursor:pointer;color:#555;font-weight:500}
-    .show-answer-btn:hover{background:#d5d5d5}
     .anki-rating{display:flex;gap:8px;margin-top:20px}
     .anki-rating-btn{flex:1;padding:14px 8px;border:none;border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600;transition:all .15s}
     .anki-rating-btn:active{transform:scale(.96)}
     .anki-rating-btn.incorrect{background:#ffcdd2;color:#c62828}.anki-rating-btn.incorrect:hover{background:#ef9a9a}
     .anki-rating-btn.correct{background:#c8e6c9;color:#2e7d32}.anki-rating-btn.correct:hover{background:#a5d6a7}
     .anki-rating-btn.understood{background:#bbdefb;color:#1565c0}.anki-rating-btn.understood:hover{background:#90caf9}
-    .study-controls{display:flex;gap:8px;margin-top:16px;justify-content:center}
-    .study-ctrl-btn{padding:10px 16px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;cursor:pointer;color:#555}
-    .study-ctrl-btn:hover{background:#f5f5f5}
-    .study-ctrl-btn.active{background:#e3f2fd;border-color:#2196f3;color:#1565c0}
-    .autoplay-bar{background:#fff3e0;border-radius:8px;padding:10px 16px;margin-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;color:#e65100}
-    .autoplay-bar.hidden{display:none}
-    .autoplay-stop{padding:4px 12px;border:1px solid #e65100;border-radius:6px;background:none;color:#e65100;cursor:pointer;font-size:.8rem}
-
     /* 管理 */
     .publish-section{background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e0e0e0;margin-bottom:12px}
     .publish-section h3{font-size:.9rem;color:#555;margin-bottom:10px}
@@ -217,17 +209,11 @@
       <div class="anki-card-text anki-answer-section" id="anki-answer" style="display:none"></div>
       <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
     </div>
-    <button class="show-answer-btn" id="show-answer-btn">答えを表示</button>
     <div class="anki-rating" id="anki-rating" style="display:none">
       <button class="anki-rating-btn correct" data-rating="correct">◯</button>
       <button class="anki-rating-btn incorrect" data-rating="incorrect">×</button>
       <button class="anki-rating-btn understood" data-rating="understood">理解</button>
     </div>
-    <div class="study-controls">
-      <button class="study-ctrl-btn" id="shuffle-btn">&#x1f500; シャッフル</button>
-      <button class="study-ctrl-btn" id="autoplay-btn">&#x25b6; 自動再生</button>
-    </div>
-    <div class="autoplay-bar hidden" id="autoplay-bar"><span id="autoplay-status">自動再生中...</span><button class="autoplay-stop" id="autoplay-stop">停止</button></div>
   </div>
 
   <!-- カード管理 -->
@@ -362,7 +348,7 @@ async function navigateTo(page,data){
   stopAutoPlay();isPublicStudy=false;currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
-    case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラ暗記Anki';renderDeckList();setHomeTab(activeHomeTab);break;
+    case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
@@ -484,25 +470,24 @@ function renderStudyFilters(){
   const fs=[{key:'all',label:'全',count:pool.length},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'理解',count:countR(pool,'understood')},{key:'unrated',label:'未',count:countU(pool)}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
-  sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option></select>';
+  sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x23f9;':'&#x25b6;')+'</button>';
   document.getElementById('study-sort-select').value=studySort||'';
   document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
 function renderStudyCard(){
-  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),sb=document.getElementById('show-answer-btn'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck'),cs=document.getElementById('anki-card-stats');
+  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck'),cs=document.getElementById('anki-card-stats');
   document.getElementById('study-deck-name').textContent=isPublicStudy?'':currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;
-  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';sb.style.display='none';rt.style.display='none';sd.style.display='none';cs.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
+  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';rt.style.display='none';sd.style.display='none';cs.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
   const card=studyCards[studyIndex];
   document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${studyCards.length}`;
   document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
   qE.textContent=card.question;aE.textContent=card.answer;
   if(card.subdeck){sd.textContent=card.subdeck;sd.style.display='block'}else sd.style.display='none';
   const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
-  if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';sb.style.display='none';rt.style.display='flex'}
-  else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';sb.style.display='block';rt.style.display='none'}
+  if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';rt.style.display='flex'}
+  else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';rt.style.display='none'}
 }
 
-document.getElementById('show-answer-btn').addEventListener('click',()=>{answerShown=true;renderStudyCard()});
 document.getElementById('anki-card').addEventListener('click',()=>{if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}});
 
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
@@ -517,10 +502,8 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   renderStudyFilters();renderStudyCard();
 })});
 
-document.getElementById('shuffle-btn').addEventListener('click',()=>{for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;renderStudyCard();showToast('シャッフルしました')});
-document.getElementById('autoplay-btn').addEventListener('click',()=>{if(!studyCards.length)return;isPlaying=true;document.getElementById('autoplay-bar').classList.remove('hidden');document.getElementById('autoplay-btn').classList.add('active');autoPlayNext()});
-document.getElementById('autoplay-stop').addEventListener('click',stopAutoPlay);
-function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);document.getElementById('autoplay-bar').classList.add('hidden');document.getElementById('autoplay-btn').classList.remove('active')}
+document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x23f9;';ap.classList.add('active');autoPlayNext()}}});
+function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;';ap.classList.remove('active')}}
 function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();document.getElementById('autoplay-status').textContent='問題を表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();document.getElementById('autoplay-status').textContent='答えを表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct');saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
 
 /* ========== Manage ========== */
