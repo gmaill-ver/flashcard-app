@@ -98,6 +98,7 @@
     .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px 24px;text-align:center;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
     .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
     .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
+    .anki-card-stats{position:absolute;bottom:10px;right:12px;font-size:.9rem;letter-spacing:2px;text-align:right;max-width:80%;word-break:break-all;line-height:1.4}.mark-x{color:#e57373}.mark-o{color:#66bb6a}
     .anki-card-text{white-space:pre-wrap;word-break:break-word}
     .anki-divider{width:80%;border:none;border-top:1px solid #e0e0e0;margin:20px 0}
     .anki-answer-section{color:#1565c0}
@@ -226,6 +227,7 @@
       <div class="anki-card-text" id="anki-question"></div>
       <hr class="anki-divider" id="anki-divider" style="display:none">
       <div class="anki-card-text anki-answer-section" id="anki-answer" style="display:none"></div>
+      <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
     </div>
     <button class="show-answer-btn" id="show-answer-btn">答えを表示</button>
     <div class="anki-rating" id="anki-rating" style="display:none">
@@ -276,6 +278,7 @@
     <h3>&#x2699; 設定</h3>
     <div class="modal-row"><span>自動再生: 問題表示（秒）</span><input type="number" id="cfg-q-delay" value="3" min="1" max="30"></div>
     <div class="modal-row"><span>自動再生: 答え表示（秒）</span><input type="number" id="cfg-a-delay" value="3" min="1" max="30"></div>
+    <div class="modal-row modal-row-danger" id="reset-card-stats-row">&#x1f504; カード統計をリセット</div>
     <div class="modal-row modal-row-danger" id="delete-deck-row">&#x1f5d1; デッキを削除</div>
     <div id="delete-deck-section" style="display:none;padding:8px 0"><select id="delete-deck-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;margin-bottom:8px"></select><button class="btn btn-red btn-sm" id="delete-deck-confirm" style="width:100%">削除する</button></div>
     <div class="modal-row modal-row-danger" id="logout-row">&#x1f6aa; ログアウト</div>
@@ -479,14 +482,15 @@ function renderStudyFilters(){
   document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
 function renderStudyCard(){
-  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),sb=document.getElementById('show-answer-btn'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck');
+  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),sb=document.getElementById('show-answer-btn'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck'),cs=document.getElementById('anki-card-stats');
   document.getElementById('study-deck-name').textContent=isPublicStudy?'':currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;
-  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';sb.style.display='none';rt.style.display='none';sd.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
+  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';sb.style.display='none';rt.style.display='none';sd.style.display='none';cs.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
   const card=studyCards[studyIndex];
   document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${studyCards.length}`;
   document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
   qE.textContent=card.question;aE.textContent=card.answer;
   if(card.subdeck){sd.textContent=card.subdeck;sd.style.display='block'}else sd.style.display='none';
+  const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';sb.style.display='none';rt.style.display='flex'}
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';sb.style.display='block';rt.style.display='none'}
 }
@@ -604,6 +608,7 @@ document.getElementById('settings-close').addEventListener('click',()=>document.
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 document.getElementById('delete-deck-row').addEventListener('click',()=>{const sec=document.getElementById('delete-deck-section');if(sec.style.display==='none'){sec.style.display='block';const sel=document.getElementById('delete-deck-select');const deletable=decks.filter(d=>d.name!=='デフォルト');if(!deletable.length){showToast('削除できるデッキがありません');sec.style.display='none';return}sel.innerHTML=deletable.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}else{sec.style.display='none'}});
 document.getElementById('delete-deck-confirm').addEventListener('click',()=>{const name=document.getElementById('delete-deck-select').value;if(name)deleteDeckAction(name);document.getElementById('delete-deck-section').style.display='none'});
+document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null;if(!isGuest)await cardsCol().doc(c.id).update({incorrectCount:0,correctCount:0,lastRating:null})}if(isGuest)LS.save('fc_cards',cards);showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
 document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 
