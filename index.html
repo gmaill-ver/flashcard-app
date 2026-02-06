@@ -91,6 +91,7 @@
     .study-icon-btn{width:36px;height:36px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;transition:all .2s;flex-shrink:0}
     .study-icon-btn:hover{background:#f0f0f0}.study-icon-btn.active{background:#e3f2fd;border-color:#2196f3;color:#1565c0}
     #shuffle-btn{filter:grayscale(1) opacity(.45)}
+    #autoplay-btn{color:#2196f3}
     .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:32px 24px;text-align:left;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
     .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
     .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
@@ -468,12 +469,12 @@ function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
   const pool=currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
-  const fs=[{key:'all',label:'全',count:pool.length},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'理解',count:countR(pool,'understood')},{key:'unrated',label:'未',count:countU(pool)}];
+  const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'理解',count:countR(pool,'understood')}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
-  sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x23f9;':'&#x25b6;')+'</button>';
+  sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
   document.getElementById('study-sort-select').value=studySort||'';
-  document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
+  document.getElementById('study-sort-select').addEventListener('change',e=>{if(e.target.value==='shuffle'){for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;e.target.value='';studySort=null;renderStudyCard();showToast('シャッフルしました');return}studySort=e.target.value||null;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
 function renderStudyCard(){
   const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck'),cs=document.getElementById('anki-card-stats');
@@ -504,9 +505,9 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   renderStudyFilters();renderStudyCard();
 })});
 
-document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x23f9;';ap.classList.add('active');autoPlayNext()}}});
-function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;';ap.classList.remove('active')}}
-function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();document.getElementById('autoplay-status').textContent='問題を表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();document.getElementById('autoplay-status').textContent='答えを表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct');saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
+document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
+function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;&#xfe0e;';ap.classList.remove('active')}}
+function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct');saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
 
 /* ========== Manage ========== */
 function renderPublishSection(){
