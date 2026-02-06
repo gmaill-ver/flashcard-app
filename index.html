@@ -45,12 +45,11 @@
     .deck-card{background:#fff;border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:box-shadow .2s,transform .15s;border:1px solid #e0e0e0}
     .deck-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);transform:translateY(-1px)}
     .deck-card:active{transform:scale(.99)}
-    .deck-info h3{font-size:1rem;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
-    .deck-meta{font-size:.78rem;color:#888;display:flex;gap:8px}
-    .deck-rating-dots{display:flex;gap:6px;font-size:.72rem}
-    .dot-incorrect{color:#e57373}.dot-correct{color:#81c784}.dot-understood{color:#64b5f6}
-    .badge-public{font-size:.65rem;background:#e8f5e9;color:#2e7d32;padding:1px 8px;border-radius:10px;font-weight:400}
-    .deck-card-actions{display:flex;gap:4px;align-items:center}
+    .deck-info{flex:1;min-width:0}
+    .deck-info h3{font-size:1rem;font-weight:600;margin:0;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .badge-public{font-size:.65rem;background:#e8f5e9;color:#2e7d32;padding:1px 8px;border-radius:10px;font-weight:400;flex-shrink:0}
+    .deck-card-actions{display:flex;gap:4px;align-items:center;flex-shrink:0}
+    .deck-count{font-size:.78rem;color:#888;white-space:nowrap}
     .deck-action-btn{background:none;border:none;cursor:pointer;font-size:1rem;padding:6px;border-radius:6px;color:#999}
     .deck-action-btn:hover{background:#f5f5f5;color:#555}
     .deck-arrow{color:#bbb;font-size:1.2rem}
@@ -390,8 +389,8 @@ function countU(a){return a.filter(c=>!c.lastRating).length}
 function renderDeckList(){
   const el=document.getElementById('deck-list');let html='';
   for(const d of decks){
-    const total=d.cardCount||0,inc=d.ratings?.incorrect||0,cor=d.ratings?.correct||0,und=d.ratings?.understood||0;
-    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3><div class="deck-meta"><span>${total}枚</span></div><div class="deck-rating-dots">${inc?`<span class="dot-incorrect">&#x2716; ${inc}</span>`:''}${cor?`<span class="dot-correct">&#x2714; ${cor}</span>`:''}${und?`<span class="dot-understood">&#x2605; ${und}</span>`:''}</div></div><div class="deck-card-actions"><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button><span class="deck-arrow">&#x276f;</span></div></div>`;
+    const total=d.cardCount||0;
+    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3></div><div class="deck-card-actions"><span class="deck-count">${total}枚</span><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button><span class="deck-arrow">&#x276f;</span></div></div>`;
     for(const sd of d.subdecks){html+=`<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><div><h4>${esc(sd)}</h4></div><span class="deck-arrow">&#x276f;</span></div>`}
   }
   el.innerHTML=html;
