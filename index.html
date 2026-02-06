@@ -235,12 +235,13 @@
   <!-- 統計 -->
   <div class="page" id="page-stats">
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-value" id="s-total-cards">0</div><div class="stat-label">総カード数</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-total-reviews">0</div><div class="stat-label">総復習回数</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-incorrect">0</div><div class="stat-label">×</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-correct">0</div><div class="stat-label">◯</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-understood">0</div><div class="stat-label">&#x1f44d;</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-total-reviews">0</div><div class="stat-label">総学習回数</div></div>
       <div class="stat-card"><div class="stat-value" id="s-study-days">0</div><div class="stat-label">学習日数</div></div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-value" id="s-correct">0</div><div class="stat-label">◯</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-incorrect">0</div><div class="stat-label">×</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-understood">0</div><div class="stat-label">&#x1f44d;</div></div>
     </div>
     <div class="stats-chart-wrap">
       <div class="stats-range">
@@ -609,7 +610,7 @@ function resetForm(){editingId=null;document.getElementById('card-question').val
 document.getElementById('card-cancel-btn').addEventListener('click',resetForm);
 
 /* ========== Stats ========== */
-function renderStats(){document.getElementById('s-total-cards').textContent=decks.reduce((s,d)=>s+(d.cardCount||0),0);document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-study-days').textContent=Object.keys(dailyStats).length;renderStatsChart()}
+function renderStats(){document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-study-days').textContent=Object.keys(dailyStats).length;renderStatsChart()}
 function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
 function renderStatsChart(){
   const ctx=document.getElementById('stats-chart');if(!ctx)return;
