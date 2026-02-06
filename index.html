@@ -32,7 +32,7 @@
     .header-actions{display:flex;gap:4px;align-items:center}
     .header-icon-btn{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:6px 8px;border-radius:6px;color:#555}
     .header-icon-btn:hover{background:#eee}
-    .header-user{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:#f5f5f5;font-size:.8rem;color:#555;cursor:pointer}
+    .header-user{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#f5f5f5;cursor:pointer;overflow:hidden}
     .header-user:hover{background:#eee}
 
     /* ホームタブ */
@@ -186,7 +186,7 @@
     <div class="header-actions">
       <button class="header-icon-btn" id="stats-btn" title="統計">&#x1f4ca;</button>
       <button class="header-icon-btn" id="settings-btn" title="設定">&#x2699;</button>
-      <div class="header-user" id="header-user"><span id="header-user-name">ゲスト</span></div>
+      <div class="header-user" id="header-user"><img id="header-avatar" style="width:100%;height:100%;object-fit:cover;display:none"><span id="header-user-icon" style="font-size:1.1rem">&#x1f464;</span></div>
     </div>
   </div>
 
@@ -242,17 +242,6 @@
 
   <!-- カード管理 -->
   <div class="page" id="page-manage">
-    <div class="publish-section" id="publish-section">
-      <h3>&#x1f4e4; 公開設定</h3>
-      <div class="publish-status" id="publish-status">このデッキは公開されていません</div>
-      <div id="publish-desc-group" class="form-group" style="margin-bottom:10px">
-        <label>説明（任意）</label>
-        <input type="text" id="publish-desc" placeholder="デッキの説明を入力">
-      </div>
-      <div style="display:flex;gap:8px" id="publish-buttons">
-        <button class="btn btn-green btn-sm" id="publish-btn">公開する</button>
-      </div>
-    </div>
     <div class="manage-subdeck-section">
       <h3>サブデッキ</h3>
       <div class="subdeck-chips" id="subdeck-chips"></div>
@@ -292,6 +281,21 @@
     <div class="modal-row modal-row-danger" id="logout-row">&#x1f6aa; ログアウト</div>
     <button class="modal-close" id="settings-close">閉じる</button>
   </div></div>
+  <div class="modal-overlay" id="manage-settings-modal"><div class="modal">
+    <h3>&#x2699; デッキ設定</h3>
+    <div id="publish-section">
+      <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f4e4; 公開設定</div>
+      <div class="publish-status" id="publish-status">このデッキは公開されていません</div>
+      <div id="publish-desc-group" class="form-group" style="margin-bottom:10px">
+        <label>説明（任意）</label>
+        <input type="text" id="publish-desc" placeholder="デッキの説明を入力">
+      </div>
+      <div style="display:flex;gap:8px" id="publish-buttons">
+        <button class="btn btn-green btn-sm" id="publish-btn">公開する</button>
+      </div>
+    </div>
+    <button class="modal-close" id="manage-settings-close">閉じる</button>
+  </div></div>
   <div class="toast" id="toast"></div>
 
 <script>
@@ -305,7 +309,7 @@ let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null;
-let isPublicStudy=false,activeHomeTab='my';
+let isPublicStudy=false,activeHomeTab='my',currentPage='home';
 
 /* ========== LS ========== */
 const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},save(k,v){localStorage.setItem(k,JSON.stringify(v))}};
@@ -341,18 +345,18 @@ document.getElementById('google-login-btn').addEventListener('click',async()=>{t
 document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login')}});
-async function initApp(){document.getElementById('loading').classList.remove('hidden');await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';document.getElementById('header-user-name').textContent=isGuest?'ゲスト':(currentUser?.displayName||currentUser?.email||'ユーザー');navigateTo('home')}
+async function initApp(){document.getElementById('loading').classList.remove('hidden');await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home')}
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
 function navigateTo(page,data){
-  stopAutoPlay();isPublicStudy=false;
+  stopAutoPlay();isPublicStudy=false;currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='デッキ';renderDeckList();setHomeTab(activeHomeTab);break;
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
-    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';resetForm();renderManageSubdecks();renderManageList();renderPublishSection();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
   }
 }
@@ -595,11 +599,13 @@ function renderStats(){document.getElementById('s-total-cards').textContent=card
 document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};await saveStats();renderStats();showToast('リセットしました')});
 
 /* ========== Settings ========== */
-document.getElementById('settings-btn').addEventListener('click',()=>{document.getElementById('delete-deck-section').style.display='none';document.getElementById('settings-modal').classList.add('active')});
+document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){renderPublishSection();document.getElementById('manage-settings-modal').classList.add('active')}else{document.getElementById('delete-deck-section').style.display='none';document.getElementById('settings-modal').classList.add('active')}});
 document.getElementById('settings-close').addEventListener('click',()=>document.getElementById('settings-modal').classList.remove('active'));
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 document.getElementById('delete-deck-row').addEventListener('click',()=>{const sec=document.getElementById('delete-deck-section');if(sec.style.display==='none'){sec.style.display='block';const sel=document.getElementById('delete-deck-select');const deletable=decks.filter(d=>d.name!=='デフォルト');if(!deletable.length){showToast('削除できるデッキがありません');sec.style.display='none';return}sel.innerHTML=deletable.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}else{sec.style.display='none'}});
 document.getElementById('delete-deck-confirm').addEventListener('click',()=>{const name=document.getElementById('delete-deck-select').value;if(name)deleteDeckAction(name);document.getElementById('delete-deck-section').style.display='none'});
+document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
+document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 
 /* ========== Import/Export ========== */
 document.getElementById('export-btn').addEventListener('click',()=>{const b=new Blob([JSON.stringify({cards,decks,stats,exportDate:new Date().toISOString()},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`ankimaster_${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(u)});
