@@ -250,6 +250,7 @@
         <button class="stats-range-btn" data-range="month">月</button>
       </div>
       <canvas id="stats-chart"></canvas>
+      <div style="margin-top:12px"><select id="stats-deck-filter" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;color:#555"></select></div>
     </div>
   </div>
 
@@ -314,7 +315,7 @@ let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null;
 let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='';
-let dailyStats={},statsChart=null,statsRange='day';
+let dailyStats={},statsChart=null,statsRange='day',statsFilterDeck='';
 
 /* ========== LS ========== */
 const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},save(k,v){localStorage.setItem(k,JSON.stringify(v))}};
@@ -342,7 +343,7 @@ async function updateCard(id,data){const i=cards.findIndex(c=>c.id===id);if(i===
 async function removeCard(id){const old=cards.find(c=>c.id===id);cards=cards.filter(c=>c.id!==id);if(isGuest){LS.save('fc_cards',cards)}else{try{await cardsCol().doc(id).delete()}catch(e){console.error(e)}}if(old){const dk=getDeck(old.deck);if(dk){dk.cardCount=Math.max(0,(dk.cardCount||0)-1);if(old.lastRating&&dk.ratings)dk.ratings[old.lastRating]=Math.max(0,(dk.ratings[old.lastRating]||0)-1);await saveDecks()}}}
 
 function todayStr(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-function trackDaily(r){const t=todayStr();if(!dailyStats[t])dailyStats[t]={reviews:0,incorrect:0,correct:0,understood:0};dailyStats[t].reviews++;dailyStats[t][r]++}
+function trackDaily(r,dk){const t=todayStr();if(!dailyStats[t])dailyStats[t]={reviews:0,incorrect:0,correct:0,understood:0,decks:{}};dailyStats[t].reviews++;dailyStats[t][r]++;if(dk){if(!dailyStats[t].decks)dailyStats[t].decks={};if(!dailyStats[t].decks[dk])dailyStats[t].decks[dk]={reviews:0,incorrect:0,correct:0,understood:0};dailyStats[t].decks[dk].reviews++;dailyStats[t].decks[dk][r]++}}
 function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
 function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
 async function loadDeckCards(name){if(isGuest)return;try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){console.error(e);showToast('カード読み込み失敗')}}
@@ -509,7 +510,7 @@ document.getElementById('anki-card').addEventListener('click',()=>{if(studyCards
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
   const r=b.dataset.rating;
   if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
-  const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;trackDaily(r);
+  const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;trackDaily(r,currentDeck);
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
   await updateCard(card.id,upd);await saveStats();
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
@@ -520,7 +521,7 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
 
 document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){studySort='shuffle';LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;const sel=document.getElementById('study-sort-select');if(sel)sel.value='shuffle';renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
 function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;&#xfe0e;';ap.classList.remove('active')}}
-function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct');saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
+function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct',currentDeck);saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
 
 /* ========== Manage ========== */
 function renderPublishSection(){
@@ -610,18 +611,20 @@ function resetForm(){editingId=null;document.getElementById('card-question').val
 document.getElementById('card-cancel-btn').addEventListener('click',resetForm);
 
 /* ========== Stats ========== */
-function renderStats(){document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-study-days').textContent=Object.keys(dailyStats).length;renderStatsChart()}
+function renderStats(){document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-study-days').textContent=Object.keys(dailyStats).length;const sel=document.getElementById('stats-deck-filter');sel.innerHTML='<option value="">全てのデッキ</option>'+decks.map(d=>`<option value="${esc(d.name)}"${statsFilterDeck===d.name?' selected':''}>${esc(d.name)}</option>`).join('');renderStatsChart()}
 function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function getDailyReviews(k){const e=dailyStats[k];if(!e)return 0;if(statsFilterDeck)return e.decks?.[statsFilterDeck]?.reviews||0;return e.reviews||0}
 function renderStatsChart(){
   const ctx=document.getElementById('stats-chart');if(!ctx)return;
   let labels=[],data=[],dayInfo=[];const now=new Date();
-  if(statsRange==='day'){for(let i=13;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);const k=dateStr(d);const dow=d.getDay();labels.push(`${d.getMonth()+1}/${d.getDate()}`);dayInfo.push(dow);data.push(dailyStats[k]?.reviews||0)}}
-  else if(statsRange==='week'){for(let i=11;i>=0;i--){const wEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i*7);const wSt=new Date(wEnd.getFullYear(),wEnd.getMonth(),wEnd.getDate()-6);let t=0;for(let j=0;j<7;j++){const d=new Date(wSt.getFullYear(),wSt.getMonth(),wSt.getDate()+j);t+=dailyStats[dateStr(d)]?.reviews||0}labels.push(`${wSt.getMonth()+1}/${wSt.getDate()}~`);dayInfo.push(-1);data.push(t)}}
-  else{for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const y=d.getFullYear(),m=d.getMonth();let t=0;for(const[k,v]of Object.entries(dailyStats)){const kd=new Date(k+'T00:00:00');if(kd.getFullYear()===y&&kd.getMonth()===m)t+=v.reviews||0}labels.push(`${m+1}月`);dayInfo.push(-1);data.push(t)}}
+  if(statsRange==='day'){for(let i=13;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);const k=dateStr(d);const dow=d.getDay();labels.push(`${d.getMonth()+1}/${d.getDate()}`);dayInfo.push(dow);data.push(getDailyReviews(k))}}
+  else if(statsRange==='week'){for(let i=11;i>=0;i--){const wEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i*7);const wSt=new Date(wEnd.getFullYear(),wEnd.getMonth(),wEnd.getDate()-6);let t=0;for(let j=0;j<7;j++){const d=new Date(wSt.getFullYear(),wSt.getMonth(),wSt.getDate()+j);t+=getDailyReviews(dateStr(d))}labels.push(`${wSt.getMonth()+1}/${wSt.getDate()}~`);dayInfo.push(-1);data.push(t)}}
+  else{for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const y=d.getFullYear(),m=d.getMonth();let t=0;for(const k of Object.keys(dailyStats)){const kd=new Date(k+'T00:00:00');if(kd.getFullYear()===y&&kd.getMonth()===m)t+=getDailyReviews(k)}labels.push(`${m+1}月`);dayInfo.push(-1);data.push(t)}}
   if(statsChart)statsChart.destroy();
   statsChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'学習数',data,borderColor:'#2196f3',backgroundColor:'rgba(33,150,243,0.1)',fill:true,tension:0.3,pointRadius:4,pointBackgroundColor:'#2196f3'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:c=>{const dow=dayInfo[c.index];if(dow===0)return'#e53935';if(dow===6)return'#1565c0';return'#666'},font:{size:11}}},y:{beginAtZero:true,ticks:{precision:0}}}}})
 }
 document.querySelectorAll('.stats-range-btn').forEach(b=>{b.addEventListener('click',()=>{statsRange=b.dataset.range;document.querySelectorAll('.stats-range-btn').forEach(x=>x.classList.toggle('active',x===b));renderStatsChart()})});
+document.getElementById('stats-deck-filter').addEventListener('change',e=>{statsFilterDeck=e.target.value;renderStatsChart()});
 document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};dailyStats={};await saveStats();showToast('リセットしました');document.getElementById('settings-modal').classList.remove('active')});
 
 /* ========== Settings ========== */
