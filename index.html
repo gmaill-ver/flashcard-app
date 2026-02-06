@@ -9,261 +9,195 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
-      background: #f0f0f0;
-      min-height: 100vh;
-      color: #333;
-    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif; background: #f0f0f0; min-height: 100vh; color: #333; }
 
-    /* ===== ページ ===== */
     .page { display: none; max-width: 600px; margin: 0 auto; padding: 0 16px 40px; animation: fadeIn 0.25s ease; }
     .page.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* ===== ログインページ ===== */
-    .login-page {
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 20px; text-align: center;
-    }
+    /* ログイン */
+    .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
     .login-logo { font-size: 3rem; margin-bottom: 8px; }
     .login-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
     .login-sub { font-size: 0.9rem; color: #888; margin-bottom: 40px; }
-    .login-btn {
-      display: flex; align-items: center; gap: 12px; padding: 14px 32px;
-      border: 1px solid #ddd; border-radius: 10px; background: #fff;
-      font-size: 1rem; cursor: pointer; transition: all 0.2s; width: 280px; justify-content: center;
-      margin-bottom: 12px;
-    }
+    .login-btn { display: flex; align-items: center; gap: 12px; padding: 14px 32px; border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 1rem; cursor: pointer; transition: all 0.2s; width: 280px; justify-content: center; margin-bottom: 12px; }
     .login-btn:hover { background: #f5f5f5; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .login-btn:active { transform: scale(0.98); }
-    .login-btn-google { border-color: #4285f4; color: #333; font-weight: 500; }
+    .login-btn-google { border-color: #4285f4; font-weight: 500; }
     .login-btn-guest { border-color: #ccc; color: #666; }
     .login-google-icon { width: 20px; height: 20px; }
 
-    /* ===== ローディング ===== */
-    .loading-overlay {
-      position: fixed; inset: 0; background: #f0f0f0; z-index: 999;
-      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
-    }
+    /* ローディング */
+    .loading-overlay { position: fixed; inset: 0; background: #f0f0f0; z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
     .loading-overlay.hidden { display: none; }
     .spinner { width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #2196f3; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ===== ヘッダー ===== */
-    .app-header {
-      background: #fff; border-bottom: 1px solid #ddd; padding: 12px 16px;
-      margin-bottom: 16px; display: flex; align-items: center; gap: 10px;
-    }
-    .app-header h1 { font-size: 1.05rem; font-weight: 700; flex: 1; }
-    .header-back {
-      background: none; border: none; font-size: 1.4rem; cursor: pointer;
-      color: #2196f3; padding: 4px 8px; display: none;
-    }
+    /* ヘッダー */
+    .app-header { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .app-header h1 { font-size: 1.05rem; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-back { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #2196f3; padding: 4px 8px; display: none; }
     .header-back.visible { display: block; }
     .header-actions { display: flex; gap: 4px; align-items: center; }
-    .header-icon-btn {
-      background: none; border: none; font-size: 1.1rem; cursor: pointer;
-      padding: 6px 8px; border-radius: 6px; color: #555;
-    }
+    .header-icon-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: #555; }
     .header-icon-btn:hover { background: #eee; }
-    .header-user {
-      display: flex; align-items: center; gap: 6px; padding: 4px 10px;
-      border-radius: 20px; background: #f5f5f5; font-size: 0.8rem; color: #555; cursor: pointer;
-    }
+    .header-user { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; background: #f5f5f5; font-size: 0.8rem; color: #555; cursor: pointer; }
     .header-user:hover { background: #eee; }
-    .header-avatar { width: 24px; height: 24px; border-radius: 50%; }
 
-    /* ===== ホーム ===== */
-    .deck-list { display: flex; flex-direction: column; gap: 8px; }
-    .deck-card {
-      background: #fff; border-radius: 12px; padding: 16px 20px;
-      display: flex; align-items: center; justify-content: space-between;
-      cursor: pointer; transition: box-shadow 0.2s, transform 0.15s; border: 1px solid #e0e0e0;
-    }
+    /* ホーム */
+    .deck-list { display: flex; flex-direction: column; gap: 4px; }
+    .deck-card { background: #fff; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: box-shadow 0.2s, transform 0.15s; border: 1px solid #e0e0e0; }
     .deck-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
     .deck-card:active { transform: scale(0.99); }
-    .deck-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
-    .deck-meta { font-size: 0.8rem; color: #888; }
+    .deck-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 2px; }
+    .deck-meta { font-size: 0.78rem; color: #888; display: flex; gap: 8px; }
+    .deck-rating-dots { display: flex; gap: 6px; font-size: 0.72rem; }
+    .dot-incorrect { color: #e57373; }
+    .dot-correct { color: #81c784; }
+    .dot-understood { color: #64b5f6; }
     .deck-card-actions { display: flex; gap: 4px; align-items: center; }
-    .deck-action-btn {
-      background: none; border: none; cursor: pointer; font-size: 1rem;
-      padding: 6px; border-radius: 6px; color: #999;
-    }
+    .deck-action-btn { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 6px; color: #999; }
     .deck-action-btn:hover { background: #f5f5f5; color: #555; }
     .deck-arrow { color: #bbb; font-size: 1.2rem; }
 
-    .add-deck-section {
-      margin-top: 16px; background: #fff; border-radius: 12px;
-      padding: 16px 20px; border: 2px dashed #ccc;
-    }
+    /* サブデッキ */
+    .subdeck-card { margin-left: 24px; background: #fafafa; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid #eee; transition: all 0.2s; }
+    .subdeck-card:hover { background: #f0f0f0; }
+    .subdeck-card h4 { font-size: 0.9rem; font-weight: 500; }
+    .subdeck-meta { font-size: 0.75rem; color: #999; }
+    .subdeck-add { margin-left: 24px; padding: 8px 16px; font-size: 0.8rem; color: #999; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .subdeck-add:hover { color: #2196f3; }
+    .subdeck-add-form { margin-left: 24px; display: flex; gap: 6px; padding: 6px 0; }
+    .subdeck-add-form input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; }
+    .subdeck-add-form input:focus { outline: none; border-color: #2196f3; }
+
+    .add-deck-section { margin-top: 16px; background: #fff; border-radius: 12px; padding: 16px 20px; border: 2px dashed #ccc; }
     .add-deck-section h3 { font-size: 0.9rem; color: #666; margin-bottom: 12px; }
     .add-deck-row { display: flex; gap: 8px; }
-    .add-deck-row input {
-      flex: 1; padding: 10px 14px; border: 1px solid #ddd;
-      border-radius: 8px; font-size: 0.95rem; background: #fafafa;
-    }
+    .add-deck-row input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; }
     .add-deck-row input:focus { outline: none; border-color: #2196f3; }
 
-    .btn {
-      padding: 10px 20px; border: none; border-radius: 8px;
-      font-size: 0.95rem; cursor: pointer; transition: all 0.2s; font-weight: 500;
-    }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; font-weight: 500; }
     .btn:active { transform: scale(0.97); }
     .btn-blue { background: #2196f3; color: #fff; }
     .btn-blue:hover { background: #1976d2; }
+    .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
     .btn-gray { background: #e0e0e0; color: #555; }
     .btn-red { background: #ef5350; color: #fff; }
     .btn-red:hover { background: #d32f2f; }
 
     .io-row { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
-    .io-btn {
-      padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px;
-      background: #fff; font-size: 0.85rem; cursor: pointer; color: #555;
-    }
+    .io-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 0.85rem; cursor: pointer; color: #555; }
     .io-btn:hover { background: #f5f5f5; }
 
-    /* ===== 学習 ===== */
+    /* 学習 */
     .study-deck-name { font-size: 0.85rem; color: #888; text-align: center; margin-bottom: 8px; }
-    .study-progress { font-size: 0.85rem; color: #666; text-align: center; margin-bottom: 16px; }
+    .study-progress { font-size: 0.85rem; color: #666; text-align: center; margin-bottom: 12px; }
     .study-progress-bar { height: 4px; background: #e0e0e0; border-radius: 2px; margin-top: 6px; overflow: hidden; }
     .study-progress-fill { height: 100%; background: #4caf50; border-radius: 2px; transition: width 0.3s; }
 
-    .anki-card {
-      background: #fff; border-radius: 12px; min-height: 280px;
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      padding: 32px 24px; text-align: center; font-size: 1.15rem; line-height: 1.8;
-      cursor: pointer; border: 1px solid #e0e0e0; position: relative; user-select: none;
-    }
-    .anki-card-label {
-      position: absolute; top: 12px; left: 16px; font-size: 0.75rem;
-      color: #aaa; font-weight: 600; text-transform: uppercase;
-    }
+    /* 復習フィルター */
+    .study-filters { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+    .study-filter-btn { padding: 6px 14px; border: 1px solid #ddd; border-radius: 20px; background: #fff; font-size: 0.78rem; cursor: pointer; white-space: nowrap; color: #666; transition: all 0.2s; }
+    .study-filter-btn.active { background: #333; color: #fff; border-color: #333; }
+    .study-filter-btn .filter-count { margin-left: 4px; opacity: 0.7; }
+
+    .anki-card { background: #fff; border-radius: 12px; min-height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px 24px; text-align: center; font-size: 1.15rem; line-height: 1.8; cursor: pointer; border: 1px solid #e0e0e0; position: relative; user-select: none; }
+    .anki-card-label { position: absolute; top: 12px; left: 16px; font-size: 0.75rem; color: #aaa; font-weight: 600; }
+    .anki-card-subdeck { position: absolute; top: 12px; right: 16px; font-size: 0.7rem; color: #64b5f6; background: #e3f2fd; padding: 2px 8px; border-radius: 10px; }
     .anki-card-text { white-space: pre-wrap; word-break: break-word; }
     .anki-divider { width: 80%; border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
     .anki-answer-section { color: #1565c0; }
 
-    .show-answer-btn {
-      display: block; width: 100%; padding: 16px; margin-top: 20px;
-      background: #e0e0e0; border: none; border-radius: 8px;
-      font-size: 1rem; cursor: pointer; color: #555; font-weight: 500;
-    }
+    .show-answer-btn { display: block; width: 100%; padding: 16px; margin-top: 20px; background: #e0e0e0; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; color: #555; font-weight: 500; }
     .show-answer-btn:hover { background: #d5d5d5; }
 
+    /* 評価ボタン - 薄い色 + 常に横並び */
     .anki-rating { display: flex; gap: 8px; margin-top: 20px; }
-    .anki-rating-btn {
-      flex: 1; padding: 14px 8px; border: none; border-radius: 8px;
-      font-size: 0.9rem; cursor: pointer; color: #fff; font-weight: 600; transition: all 0.15s;
-    }
+    .anki-rating-btn { flex: 1; padding: 14px 8px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: 600; transition: all 0.15s; }
     .anki-rating-btn:active { transform: scale(0.96); }
-    .anki-rating-btn.again { background: #d32f2f; }
-    .anki-rating-btn.again:hover { background: #b71c1c; }
-    .anki-rating-btn.good { background: #4caf50; }
-    .anki-rating-btn.good:hover { background: #388e3c; }
-    .anki-rating-btn.easy { background: #2196f3; }
-    .anki-rating-btn.easy:hover { background: #1565c0; }
-    .anki-rating-label { display: block; font-size: 0.7rem; opacity: 0.8; margin-top: 2px; font-weight: 400; }
+    .anki-rating-btn.incorrect { background: #ffcdd2; color: #c62828; }
+    .anki-rating-btn.incorrect:hover { background: #ef9a9a; }
+    .anki-rating-btn.correct { background: #c8e6c9; color: #2e7d32; }
+    .anki-rating-btn.correct:hover { background: #a5d6a7; }
+    .anki-rating-btn.understood { background: #bbdefb; color: #1565c0; }
+    .anki-rating-btn.understood:hover { background: #90caf9; }
+    .anki-rating-label { display: block; font-size: 0.7rem; opacity: 0.7; margin-top: 2px; font-weight: 400; }
 
     .study-controls { display: flex; gap: 8px; margin-top: 16px; justify-content: center; }
-    .study-ctrl-btn {
-      padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px;
-      background: #fff; font-size: 0.85rem; cursor: pointer; color: #555;
-    }
+    .study-ctrl-btn { padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 0.85rem; cursor: pointer; color: #555; }
     .study-ctrl-btn:hover { background: #f5f5f5; }
     .study-ctrl-btn.active { background: #e3f2fd; border-color: #2196f3; color: #1565c0; }
 
-    .autoplay-bar {
-      background: #fff3e0; border-radius: 8px; padding: 10px 16px; margin-top: 12px;
-      display: flex; align-items: center; justify-content: space-between;
-      font-size: 0.85rem; color: #e65100;
-    }
+    .autoplay-bar { background: #fff3e0; border-radius: 8px; padding: 10px 16px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: #e65100; }
     .autoplay-bar.hidden { display: none; }
-    .autoplay-stop {
-      padding: 4px 12px; border: 1px solid #e65100; border-radius: 6px;
-      background: none; color: #e65100; cursor: pointer; font-size: 0.8rem;
-    }
+    .autoplay-stop { padding: 4px 12px; border: 1px solid #e65100; border-radius: 6px; background: none; color: #e65100; cursor: pointer; font-size: 0.8rem; }
 
-    /* ===== カード管理 ===== */
-    .manage-form {
-      background: #fff; border-radius: 12px; padding: 20px;
-      border: 1px solid #e0e0e0; margin-bottom: 16px;
-    }
+    /* カード管理 */
+    .manage-subdeck-section { background: #fff; border-radius: 12px; padding: 16px 20px; border: 1px solid #e0e0e0; margin-bottom: 12px; }
+    .manage-subdeck-section h3 { font-size: 0.9rem; color: #555; margin-bottom: 10px; }
+    .subdeck-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .subdeck-chip { background: #e3f2fd; color: #1565c0; padding: 4px 12px; border-radius: 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+    .subdeck-chip-del { cursor: pointer; opacity: 0.6; font-size: 0.9rem; }
+    .subdeck-chip-del:hover { opacity: 1; }
+
+    .manage-form { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e0e0e0; margin-bottom: 16px; }
     .manage-form h3 { font-size: 0.95rem; margin-bottom: 16px; color: #555; }
     .form-group { margin-bottom: 14px; }
     .form-group label { display: block; font-size: 0.8rem; color: #888; margin-bottom: 6px; font-weight: 500; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; padding: 10px 14px; border: 1px solid #ddd;
-      border-radius: 8px; font-size: 0.95rem; background: #fafafa; color: #333;
-    }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; color: #333; }
     .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #2196f3; background: #fff; }
     .form-group textarea { min-height: 100px; resize: vertical; font-family: inherit; line-height: 1.6; }
 
     .card-list-section { margin-top: 20px; }
     .card-list-section h3 { font-size: 0.95rem; color: #555; margin-bottom: 12px; }
-    .card-item {
-      background: #fff; border: 1px solid #e0e0e0; border-radius: 10px;
-      padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px;
-    }
+    .card-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
     .card-item-content { flex: 1; overflow: hidden; }
     .card-item-q { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
     .card-item-a { font-size: 0.8rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-item-tags { display: flex; gap: 4px; margin-top: 4px; }
+    .card-item-tag { font-size: 0.68rem; padding: 1px 8px; border-radius: 10px; }
+    .tag-subdeck { background: #e3f2fd; color: #1565c0; }
+    .tag-incorrect { background: #ffcdd2; color: #c62828; }
+    .tag-correct { background: #c8e6c9; color: #2e7d32; }
+    .tag-understood { background: #bbdefb; color: #1565c0; }
     .card-item-actions { display: flex; gap: 4px; }
     .card-item-btn { border: none; background: none; cursor: pointer; font-size: 0.95rem; padding: 4px 8px; border-radius: 6px; }
     .card-item-btn:hover { background: #f0f0f0; }
     .empty-state { text-align: center; padding: 40px 20px; color: #aaa; }
     .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
 
-    /* ===== 統計 ===== */
+    /* 統計 */
     .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
     .stat-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; text-align: center; }
     .stat-value { font-size: 1.8rem; font-weight: 700; color: #2196f3; }
     .stat-label { font-size: 0.8rem; color: #999; margin-top: 4px; }
 
-    /* ===== 設定モーダル ===== */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-      z-index: 100; justify-content: center; align-items: flex-end;
-    }
+    /* モーダル */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: flex-end; }
     .modal-overlay.active { display: flex; }
-    .modal {
-      background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-width: 600px;
-      padding: 24px 20px; max-height: 70vh; overflow-y: auto; animation: slideUp 0.25s ease;
-    }
+    .modal { background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-width: 600px; padding: 24px 20px; max-height: 70vh; overflow-y: auto; animation: slideUp 0.25s ease; }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     .modal h3 { font-size: 1rem; margin-bottom: 16px; }
-    .modal-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 0; border-bottom: 1px solid #eee; font-size: 0.9rem;
-    }
+    .modal-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
     .modal-row:last-child { border-bottom: none; }
     .modal-row input[type="number"] { width: 60px; padding: 6px; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 0.9rem; }
     .modal-close { display: block; width: 100%; padding: 14px; margin-top: 16px; background: #e0e0e0; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; }
     .modal-row-danger { color: #d32f2f; cursor: pointer; }
     .modal-row-danger:hover { background: #fff5f5; }
 
-    /* ===== toast ===== */
-    .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: #333; color: #fff; padding: 10px 24px; border-radius: 8px;
-      font-size: 0.85rem; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none;
-    }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
     .toast.show { opacity: 1; }
 
     @media (max-width: 600px) {
       .anki-card { min-height: 220px; padding: 24px 16px; font-size: 1rem; }
-      .anki-rating { flex-direction: column; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ローディング -->
-  <div class="loading-overlay" id="loading">
-    <div class="spinner"></div>
-    <div style="color:#888; font-size:0.9rem;">読み込み中...</div>
-  </div>
+  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:0.9rem">読み込み中...</div></div>
 
-  <!-- ===== ログインページ ===== -->
+  <!-- ログイン -->
   <div class="page" id="page-login">
     <div class="login-page">
       <div class="login-logo">&#x1f4da;</div>
@@ -273,26 +207,22 @@
         <svg class="login-google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Googleでログイン
       </button>
-      <button class="login-btn login-btn-guest" id="guest-login-btn">
-        &#x1f464; お試しで使う（ゲスト）
-      </button>
+      <button class="login-btn login-btn-guest" id="guest-login-btn">&#x1f464; お試しで使う（ゲスト）</button>
     </div>
   </div>
 
-  <!-- ===== ヘッダー ===== -->
-  <div class="app-header" id="app-header" style="display:none;">
+  <!-- ヘッダー -->
+  <div class="app-header" id="app-header" style="display:none">
     <button class="header-back" id="back-btn">&#8592;</button>
     <h1 id="header-title">デッキ</h1>
     <div class="header-actions">
       <button class="header-icon-btn" id="stats-btn" title="統計">&#x1f4ca;</button>
       <button class="header-icon-btn" id="settings-btn" title="設定">&#x2699;</button>
-      <div class="header-user" id="header-user" title="アカウント">
-        <span id="header-user-name">ゲスト</span>
-      </div>
+      <div class="header-user" id="header-user"><span id="header-user-name">ゲスト</span></div>
     </div>
   </div>
 
-  <!-- ===== ホーム ===== -->
+  <!-- ホーム -->
   <div class="page" id="page-home">
     <div class="deck-list" id="deck-list"></div>
     <div class="add-deck-section">
@@ -305,78 +235,77 @@
     <div class="io-row">
       <button class="io-btn" id="export-btn">&#x1f4e4; エクスポート</button>
       <button class="io-btn" id="import-btn">&#x1f4e5; インポート</button>
-      <input type="file" id="import-file" accept=".json" style="display:none;">
+      <input type="file" id="import-file" accept=".json" style="display:none">
     </div>
   </div>
 
-  <!-- ===== 学習 ===== -->
+  <!-- 学習 -->
   <div class="page" id="page-study">
     <div class="study-deck-name" id="study-deck-name"></div>
-    <div class="study-progress" id="study-progress">
-      <span id="study-progress-text">0 / 0</span>
-      <div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div></div>
-    </div>
+    <div class="study-filters" id="study-filters"></div>
+    <div class="study-progress"><span id="study-progress-text">0 / 0</span><div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div></div></div>
     <div class="anki-card" id="anki-card">
       <span class="anki-card-label" id="anki-label">問題</span>
+      <span class="anki-card-subdeck" id="anki-subdeck" style="display:none"></span>
       <div class="anki-card-text" id="anki-question"></div>
       <hr class="anki-divider" id="anki-divider" style="display:none">
       <div class="anki-card-text anki-answer-section" id="anki-answer" style="display:none"></div>
     </div>
     <button class="show-answer-btn" id="show-answer-btn">答えを表示</button>
     <div class="anki-rating" id="anki-rating" style="display:none">
-      <button class="anki-rating-btn again" data-rating="hard">もう一回<span class="anki-rating-label">&lt;1分</span></button>
-      <button class="anki-rating-btn good" data-rating="good">普通<span class="anki-rating-label">&lt;10分</span></button>
-      <button class="anki-rating-btn easy" data-rating="easy">簡単<span class="anki-rating-label">4日</span></button>
+      <button class="anki-rating-btn incorrect" data-rating="incorrect">不正解</button>
+      <button class="anki-rating-btn correct" data-rating="correct">正解</button>
+      <button class="anki-rating-btn understood" data-rating="understood">理解した</button>
     </div>
     <div class="study-controls">
       <button class="study-ctrl-btn" id="shuffle-btn">&#x1f500; シャッフル</button>
       <button class="study-ctrl-btn" id="autoplay-btn">&#x25b6; 自動再生</button>
     </div>
-    <div class="autoplay-bar hidden" id="autoplay-bar">
-      <span id="autoplay-status">自動再生中...</span>
-      <button class="autoplay-stop" id="autoplay-stop">停止</button>
-    </div>
+    <div class="autoplay-bar hidden" id="autoplay-bar"><span id="autoplay-status">自動再生中...</span><button class="autoplay-stop" id="autoplay-stop">停止</button></div>
   </div>
 
-  <!-- ===== カード管理 ===== -->
+  <!-- カード管理 -->
   <div class="page" id="page-manage">
+    <div class="manage-subdeck-section" id="manage-subdeck-section">
+      <h3>サブデッキ</h3>
+      <div class="subdeck-chips" id="subdeck-chips"></div>
+      <div class="add-deck-row">
+        <input type="text" id="new-subdeck-input" placeholder="サブデッキ名">
+        <button class="btn btn-blue btn-sm" id="add-subdeck-btn">追加</button>
+      </div>
+    </div>
     <div class="manage-form">
       <h3 id="manage-form-title">カードを追加</h3>
       <form id="card-form">
-        <div class="form-group">
-          <label>問題（表面）</label>
-          <textarea id="card-question" placeholder="問題を入力"></textarea>
+        <div class="form-group" id="subdeck-select-group" style="display:none">
+          <label>サブデッキ</label>
+          <select id="card-subdeck-select"><option value="">なし（直下）</option></select>
         </div>
-        <div class="form-group">
-          <label>答え（裏面）</label>
-          <textarea id="card-answer" placeholder="答えを入力"></textarea>
-        </div>
-        <div style="display:flex; gap:8px;">
+        <div class="form-group"><label>問題（表面）</label><textarea id="card-question" placeholder="問題を入力"></textarea></div>
+        <div class="form-group"><label>答え（裏面）</label><textarea id="card-answer" placeholder="答えを入力"></textarea></div>
+        <div style="display:flex;gap:8px">
           <button type="submit" class="btn btn-blue" style="flex:1" id="card-submit-btn">追加</button>
           <button type="button" class="btn btn-gray" id="card-cancel-btn" style="display:none">キャンセル</button>
         </div>
       </form>
     </div>
-    <div class="card-list-section">
-      <h3 id="manage-card-count">カード (0枚)</h3>
-      <div id="manage-card-list"></div>
-    </div>
+    <div class="card-list-section"><h3 id="manage-card-count">カード (0枚)</h3><div id="manage-card-list"></div></div>
   </div>
 
-  <!-- ===== 統計 ===== -->
+  <!-- 統計 -->
   <div class="page" id="page-stats">
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-value" id="s-total-cards">0</div><div class="stat-label">総カード数</div></div>
       <div class="stat-card"><div class="stat-value" id="s-total-reviews">0</div><div class="stat-label">総復習回数</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-easy">0</div><div class="stat-label">簡単</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-good">0</div><div class="stat-label">普通</div></div>
-      <div class="stat-card"><div class="stat-value" id="s-hard">0</div><div class="stat-label">もう一回</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-incorrect">0</div><div class="stat-label">不正解</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-correct">0</div><div class="stat-label">正解</div></div>
+      <div class="stat-card"><div class="stat-value" id="s-understood">0</div><div class="stat-label">理解した</div></div>
       <div class="stat-card"><div class="stat-value" id="s-decks">0</div><div class="stat-label">デッキ数</div></div>
     </div>
-    <button class="btn btn-red" style="width:100%;" id="reset-stats-btn">統計をリセット</button>
+    <button class="btn btn-red" style="width:100%" id="reset-stats-btn">統計をリセット</button>
   </div>
 
-  <!-- ===== 設定モーダル ===== -->
+  <!-- 設定モーダル -->
   <div class="modal-overlay" id="settings-modal">
     <div class="modal">
       <h3>&#x2699; 設定</h3>
@@ -387,13 +316,10 @@
     </div>
   </div>
 
-  <!-- Toast -->
   <div class="toast" id="toast"></div>
 
   <script>
-    /* ============================================================
-       Firebase Init
-    ============================================================ */
+    /* ========== Firebase ========== */
     firebase.initializeApp({
       apiKey: "AIzaSyCFliHkmMAxap7386JJZb81o3dbI5uJFGU",
       authDomain: "ankimaster-395d5.firebaseapp.com",
@@ -403,46 +329,48 @@
       appId: "1:679225068510:web:8acae35eb5ee7537d26b4f",
       measurementId: "G-PLHLN3NH45"
     });
-
     const auth = firebase.auth();
     const db = firebase.firestore();
     db.enablePersistence().catch(() => {});
 
-    /* ============================================================
-       State
-    ============================================================ */
-    let currentUser = null;
-    let isGuest = false;
-    let cards = [];
-    let decks = [];
-    let stats = { reviews: 0, easy: 0, good: 0, hard: 0 };
-    let currentDeck = null;
-    let studyCards = [];
-    let studyIndex = 0;
-    let answerShown = false;
-    let isPlaying = false;
-    let playTimer = null;
-    let editingId = null;
+    /* ========== State ========== */
+    let currentUser = null, isGuest = false;
+    let cards = [], decks = [], stats = { reviews: 0, incorrect: 0, correct: 0, understood: 0 };
+    let currentDeck = null, currentSubdeck = null, studyCards = [], studyIndex = 0, answerShown = false;
+    let studyFilter = 'all';
+    let isPlaying = false, playTimer = null, editingId = null;
 
-    /* ============================================================
-       Local Storage (guest fallback)
-    ============================================================ */
+    /* ========== LocalStorage ========== */
     const LS = {
       load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
       save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
     };
 
-    /* ============================================================
-       Data Layer
-    ============================================================ */
+    /* ========== Data Layer ========== */
     function userDoc() { return db.collection('users').doc(currentUser.uid); }
     function cardsCol() { return userDoc().collection('cards'); }
 
+    function migrateDecks(raw) {
+      if (!raw || raw.length === 0) return [{ name: 'デフォルト', subdecks: [] }];
+      if (typeof raw[0] === 'string') return raw.map(n => ({ name: n, subdecks: [] }));
+      return raw.map(d => ({ name: d.name, subdecks: d.subdecks || [] }));
+    }
+
+    function migrateStats(raw) {
+      const s = raw || {};
+      return {
+        reviews: s.reviews || 0,
+        incorrect: s.incorrect || s.hard || 0,
+        correct: s.correct || s.good || 0,
+        understood: s.understood || s.easy || 0
+      };
+    }
+
     async function loadData() {
       if (isGuest) {
-        decks = LS.load('fc_decks', ['デフォルト']);
+        decks = migrateDecks(LS.load('fc_decks', null));
         cards = LS.load('fc_cards', []);
-        stats = LS.load('fc_stats', { reviews: 0, easy: 0, good: 0, hard: 0 });
+        stats = migrateStats(LS.load('fc_stats', null));
         if (cards.length === 0) seedSampleData();
         return;
       }
@@ -450,303 +378,249 @@
         const doc = await userDoc().get();
         if (doc.exists) {
           const d = doc.data();
-          decks = d.decks || ['デフォルト'];
-          stats = d.stats || { reviews: 0, easy: 0, good: 0, hard: 0 };
+          decks = migrateDecks(d.decks);
+          stats = migrateStats(d.stats);
         } else {
-          decks = ['デフォルト'];
-          stats = { reviews: 0, easy: 0, good: 0, hard: 0 };
+          decks = [{ name: 'デフォルト', subdecks: [] }];
+          stats = { reviews: 0, incorrect: 0, correct: 0, understood: 0 };
           await userDoc().set({ decks, stats });
         }
         const snap = await cardsCol().orderBy('created').get();
         cards = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (cards.length === 0) await seedSampleDataFirestore();
-      } catch (e) {
-        console.error('Load error:', e);
-        showToast('データの読み込みに失敗しました');
-      }
+        if (cards.length === 0) await seedFirestore();
+      } catch (e) { console.error(e); showToast('読み込みに失敗'); }
     }
 
     async function saveDecks() {
       if (isGuest) { LS.save('fc_decks', decks); return; }
       try { await userDoc().update({ decks }); } catch (e) { console.error(e); }
     }
-
     async function saveStats() {
       if (isGuest) { LS.save('fc_stats', stats); return; }
       try { await userDoc().update({ stats }); } catch (e) { console.error(e); }
     }
 
     async function addCard(card) {
-      if (isGuest) {
-        card.id = Date.now().toString();
-        cards.push(card);
-        LS.save('fc_cards', cards);
-        return;
-      }
-      try {
-        const ref = await cardsCol().add(card);
-        cards.push({ id: ref.id, ...card });
-      } catch (e) { console.error(e); showToast('保存に失敗しました'); }
+      if (isGuest) { card.id = Date.now().toString() + Math.random(); cards.push(card); LS.save('fc_cards', cards); return; }
+      try { const ref = await cardsCol().add(card); cards.push({ id: ref.id, ...card }); } catch (e) { console.error(e); showToast('保存失敗'); }
     }
-
     async function updateCard(id, data) {
-      if (isGuest) {
-        const i = cards.findIndex(c => c.id === id);
-        if (i !== -1) cards[i] = { ...cards[i], ...data };
-        LS.save('fc_cards', cards);
-        return;
-      }
-      try {
-        await cardsCol().doc(id).update(data);
-        const i = cards.findIndex(c => c.id === id);
-        if (i !== -1) cards[i] = { ...cards[i], ...data };
-      } catch (e) { console.error(e); showToast('更新に失敗しました'); }
+      const i = cards.findIndex(c => c.id === id);
+      if (i === -1) return;
+      cards[i] = { ...cards[i], ...data };
+      if (isGuest) { LS.save('fc_cards', cards); return; }
+      try { await cardsCol().doc(id).update(data); } catch (e) { console.error(e); }
     }
-
     async function removeCard(id) {
-      if (isGuest) {
-        cards = cards.filter(c => c.id !== id);
-        LS.save('fc_cards', cards);
-        return;
-      }
-      try {
-        await cardsCol().doc(id).delete();
-        cards = cards.filter(c => c.id !== id);
-      } catch (e) { console.error(e); showToast('削除に失敗しました'); }
+      cards = cards.filter(c => c.id !== id);
+      if (isGuest) { LS.save('fc_cards', cards); return; }
+      try { await cardsCol().doc(id).delete(); } catch (e) { console.error(e); }
     }
 
     function seedSampleData() {
       cards = [
-        { id: '1', question: '民法第1条の3つの基本原則は？', answer: '①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則', deck: 'デフォルト', created: new Date().toISOString() },
-        { id: '2', question: '憲法第9条の内容は？', answer: '第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認', deck: 'デフォルト', created: new Date().toISOString() },
-        { id: '3', question: '尊属殺重罰規定違憲判決のポイントは？', answer: '刑法200条は法の下の平等（憲法14条1項）に違反し無効。', deck: 'デフォルト', created: new Date().toISOString() }
+        { id: '1', question: '民法第1条の3つの基本原則は？', answer: '①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
+        { id: '2', question: '憲法第9条の内容は？', answer: '第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
+        { id: '3', question: '尊属殺重罰規定違憲判決のポイントは？', answer: '刑法200条は法の下の平等（憲法14条1項）に違反し無効。', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() }
       ];
       LS.save('fc_cards', cards);
     }
-
-    async function seedSampleDataFirestore() {
+    async function seedFirestore() {
       const samples = [
-        { question: '民法第1条の3つの基本原則は？', answer: '①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則', deck: 'デフォルト', created: new Date().toISOString() },
-        { question: '憲法第9条の内容は？', answer: '第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認', deck: 'デフォルト', created: new Date().toISOString() },
-        { question: '尊属殺重罰規定違憲判決のポイントは？', answer: '刑法200条は法の下の平等（憲法14条1項）に違反し無効。', deck: 'デフォルト', created: new Date().toISOString() }
+        { question: '民法第1条の3つの基本原則は？', answer: '①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
+        { question: '憲法第9条の内容は？', answer: '第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
+        { question: '尊属殺重罰規定違憲判決のポイントは？', answer: '刑法200条は法の下の平等（憲法14条1項）に違反し無効。', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() }
       ];
-      for (const s of samples) {
-        const ref = await cardsCol().add(s);
-        cards.push({ id: ref.id, ...s });
-      }
+      for (const s of samples) { const ref = await cardsCol().add(s); cards.push({ id: ref.id, ...s }); }
     }
 
-    /* ============================================================
-       Auth
-    ============================================================ */
+    /* ========== Auth ========== */
     document.getElementById('google-login-btn').addEventListener('click', async () => {
-      try {
-        await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-      } catch (e) {
-        if (e.code !== 'auth/popup-closed-by-user') showToast('ログインに失敗しました');
-      }
+      try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+      catch (e) { if (e.code !== 'auth/popup-closed-by-user') showToast('ログイン失敗'); }
     });
-
-    document.getElementById('guest-login-btn').addEventListener('click', () => {
-      isGuest = true;
-      currentUser = null;
-      initApp();
-    });
-
+    document.getElementById('guest-login-btn').addEventListener('click', () => { isGuest = true; currentUser = null; initApp(); });
     document.getElementById('logout-row').addEventListener('click', async () => {
       document.getElementById('settings-modal').classList.remove('active');
-      if (isGuest) {
-        isGuest = false;
-        showPage('login');
-        document.getElementById('app-header').style.display = 'none';
-        return;
-      }
+      if (isGuest) { isGuest = false; showPage('login'); document.getElementById('app-header').style.display = 'none'; return; }
       await auth.signOut();
     });
-
     auth.onAuthStateChanged(async (user) => {
-      if (user && !isGuest) {
-        currentUser = user;
-        isGuest = false;
-        await initApp();
-      } else if (!isGuest) {
-        currentUser = null;
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('app-header').style.display = 'none';
-        showPage('login');
-      }
+      if (user && !isGuest) { currentUser = user; isGuest = false; await initApp(); }
+      else if (!isGuest) { currentUser = null; document.getElementById('loading').classList.add('hidden'); document.getElementById('app-header').style.display = 'none'; showPage('login'); }
     });
-
     async function initApp() {
       document.getElementById('loading').classList.remove('hidden');
       await loadData();
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('app-header').style.display = 'flex';
-
-      // ユーザー名表示
-      const nameEl = document.getElementById('header-user-name');
-      if (isGuest) {
-        nameEl.textContent = 'ゲスト';
-      } else if (currentUser) {
-        nameEl.textContent = currentUser.displayName || currentUser.email || 'ユーザー';
-      }
-
+      document.getElementById('header-user-name').textContent = isGuest ? 'ゲスト' : (currentUser?.displayName || currentUser?.email || 'ユーザー');
       navigateTo('home');
     }
 
-    /* ============================================================
-       Navigation
-    ============================================================ */
-    function showPage(id) {
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.getElementById('page-' + id).classList.add('active');
-    }
+    /* ========== Navigation ========== */
+    function showPage(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById('page-' + id).classList.add('active'); }
 
     function navigateTo(page, data) {
       stopAutoPlay();
-      const backBtn = document.getElementById('back-btn');
+      const back = document.getElementById('back-btn');
       const title = document.getElementById('header-title');
-
       switch (page) {
         case 'home':
-          showPage('home');
-          backBtn.classList.remove('visible');
-          title.textContent = 'デッキ';
-          renderDeckList();
-          break;
+          showPage('home'); back.classList.remove('visible'); title.textContent = 'デッキ'; renderDeckList(); break;
         case 'study':
-          showPage('study');
-          backBtn.classList.add('visible');
-          currentDeck = data;
-          title.textContent = data;
-          startStudy();
-          break;
+          showPage('study'); back.classList.add('visible');
+          currentDeck = data.deck; currentSubdeck = data.subdeck || null;
+          title.textContent = currentSubdeck ? `${currentDeck} > ${currentSubdeck}` : currentDeck;
+          studyFilter = 'all'; startStudy(); break;
         case 'manage':
-          showPage('manage');
-          backBtn.classList.add('visible');
-          currentDeck = data;
-          title.textContent = data + ' - 管理';
-          resetForm();
-          renderManageList();
-          break;
+          showPage('manage'); back.classList.add('visible');
+          currentDeck = data; title.textContent = data + ' - 管理';
+          resetForm(); renderManageSubdecks(); renderManageList(); break;
         case 'stats':
-          showPage('stats');
-          backBtn.classList.add('visible');
-          title.textContent = '統計';
-          renderStats();
-          break;
+          showPage('stats'); back.classList.add('visible'); title.textContent = '統計'; renderStats(); break;
       }
     }
-
     document.getElementById('back-btn').addEventListener('click', () => navigateTo('home'));
     document.getElementById('stats-btn').addEventListener('click', () => navigateTo('stats'));
 
-    /* ============================================================
-       Home: Deck List
-    ============================================================ */
-    function renderDeckList() {
-      const container = document.getElementById('deck-list');
-      container.innerHTML = decks.map(d => {
-        const count = cards.filter(c => c.deck === d).length;
-        return `
-          <div class="deck-card" data-deck="${esc(d)}">
-            <div class="deck-info"><h3>${esc(d)}</h3><div class="deck-meta"><span>${count}枚</span></div></div>
-            <div class="deck-card-actions">
-              <button class="deck-action-btn" data-action="manage" data-deck="${esc(d)}" title="カード管理">&#x270f;</button>
-              ${d !== 'デフォルト' ? `<button class="deck-action-btn" data-action="delete" data-deck="${esc(d)}" title="削除">&#x1f5d1;</button>` : ''}
-              <span class="deck-arrow">&#x276f;</span>
-            </div>
-          </div>`;
-      }).join('');
+    /* ========== Helpers ========== */
+    function getDeck(name) { return decks.find(d => d.name === name); }
+    function deckCards(deckName) { return cards.filter(c => c.deck === deckName); }
+    function subdeckCards(deckName, sd) { return cards.filter(c => c.deck === deckName && c.subdeck === sd); }
+    function countByRating(arr, r) { return arr.filter(c => c.lastRating === r).length; }
+    function countUnrated(arr) { return arr.filter(c => !c.lastRating).length; }
 
-      container.querySelectorAll('.deck-card').forEach(el => {
-        el.addEventListener('click', (e) => {
-          const target = e.target.closest('[data-action]');
-          const dn = el.dataset.deck;
-          if (target) {
-            e.stopPropagation();
-            if (target.dataset.action === 'manage') navigateTo('manage', dn);
-            if (target.dataset.action === 'delete') deleteDeck(dn);
-          } else {
-            navigateTo('study', dn);
-          }
+    /* ========== Home ========== */
+    function renderDeckList() {
+      const el = document.getElementById('deck-list');
+      let html = '';
+      for (const d of decks) {
+        const dc = deckCards(d.name);
+        const inc = countByRating(dc, 'incorrect'), cor = countByRating(dc, 'correct'), und = countByRating(dc, 'understood');
+        html += `<div class="deck-card" data-deck="${esc(d.name)}">
+          <div class="deck-info"><h3>${esc(d.name)}</h3>
+            <div class="deck-meta"><span>${dc.length}枚</span></div>
+            <div class="deck-rating-dots">
+              ${inc ? `<span class="dot-incorrect">&#x2716; ${inc}</span>` : ''}
+              ${cor ? `<span class="dot-correct">&#x2714; ${cor}</span>` : ''}
+              ${und ? `<span class="dot-understood">&#x2605; ${und}</span>` : ''}
+            </div>
+          </div>
+          <div class="deck-card-actions">
+            <button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}">&#x270f;</button>
+            ${d.name !== 'デフォルト' ? `<button class="deck-action-btn" data-act="delete" data-deck="${esc(d.name)}">&#x1f5d1;</button>` : ''}
+            <span class="deck-arrow">&#x276f;</span>
+          </div>
+        </div>`;
+        // Sub-decks
+        for (const sd of d.subdecks) {
+          const sc = subdeckCards(d.name, sd);
+          html += `<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}">
+            <div><h4>${esc(sd)}</h4><div class="subdeck-meta">${sc.length}枚</div></div>
+            <span class="deck-arrow">&#x276f;</span>
+          </div>`;
+        }
+      }
+      el.innerHTML = html;
+
+      el.querySelectorAll('.deck-card').forEach(c => {
+        c.addEventListener('click', (e) => {
+          const t = e.target.closest('[data-act]');
+          const dn = c.dataset.deck;
+          if (t) { e.stopPropagation(); if (t.dataset.act === 'manage') navigateTo('manage', dn); if (t.dataset.act === 'delete') deleteDeckAction(dn); }
+          else navigateTo('study', { deck: dn });
         });
+      });
+      el.querySelectorAll('.subdeck-card').forEach(c => {
+        c.addEventListener('click', () => navigateTo('study', { deck: c.dataset.deck, subdeck: c.dataset.subdeck }));
       });
     }
 
     document.getElementById('add-deck-btn').addEventListener('click', async () => {
       const input = document.getElementById('new-deck-input');
       const name = input.value.trim();
-      if (name && !decks.includes(name)) {
-        decks.push(name);
-        await saveDecks();
-        input.value = '';
-        renderDeckList();
-        showToast(`「${name}」を追加しました`);
-      }
+      if (name && !getDeck(name)) { decks.push({ name, subdecks: [] }); await saveDecks(); input.value = ''; renderDeckList(); showToast(`「${name}」を追加`); }
     });
-    document.getElementById('new-deck-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-deck-btn').click(); }
-    });
+    document.getElementById('new-deck-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-deck-btn').click(); } });
 
-    async function deleteDeck(name) {
-      if (!confirm(`「${name}」を削除しますか？\nカードはデフォルトに移動します。`)) return;
-      for (const c of cards) {
-        if (c.deck === name) {
-          c.deck = 'デフォルト';
-          if (!isGuest) await cardsCol().doc(c.id).update({ deck: 'デフォルト' });
-        }
-      }
+    async function deleteDeckAction(name) {
+      if (!confirm(`「${name}」を削除？\nカードはデフォルトに移動します。`)) return;
+      for (const c of cards) { if (c.deck === name) { c.deck = 'デフォルト'; c.subdeck = ''; if (!isGuest) await cardsCol().doc(c.id).update({ deck: 'デフォルト', subdeck: '' }); } }
       if (isGuest) LS.save('fc_cards', cards);
-      decks = decks.filter(d => d !== name);
-      await saveDecks();
-      renderDeckList();
+      decks = decks.filter(d => d.name !== name); await saveDecks(); renderDeckList();
     }
 
-    /* ============================================================
-       Study
-    ============================================================ */
+    /* ========== Study ========== */
+    function getStudyPool() {
+      let pool;
+      if (currentSubdeck) pool = subdeckCards(currentDeck, currentSubdeck);
+      else pool = deckCards(currentDeck);
+
+      if (studyFilter === 'all') return pool;
+      if (studyFilter === 'unrated') return pool.filter(c => !c.lastRating);
+      return pool.filter(c => c.lastRating === studyFilter);
+    }
+
     function startStudy() {
-      studyCards = cards.filter(c => c.deck === currentDeck);
-      studyIndex = 0;
-      answerShown = false;
+      renderStudyFilters();
+      studyCards = getStudyPool();
+      studyIndex = 0; answerShown = false;
       renderStudyCard();
     }
 
-    function renderStudyCard() {
-      const qEl = document.getElementById('anki-question');
-      const aEl = document.getElementById('anki-answer');
-      const div = document.getElementById('anki-divider');
-      const showBtn = document.getElementById('show-answer-btn');
-      const rating = document.getElementById('anki-rating');
-      const label = document.getElementById('anki-label');
+    function renderStudyFilters() {
+      const pool = currentSubdeck ? subdeckCards(currentDeck, currentSubdeck) : deckCards(currentDeck);
+      const all = pool.length, inc = countByRating(pool, 'incorrect'), cor = countByRating(pool, 'correct'), und = countByRating(pool, 'understood'), unr = countUnrated(pool);
+      const filters = [
+        { key: 'all', label: '全て', count: all },
+        { key: 'incorrect', label: '不正解', count: inc },
+        { key: 'correct', label: '正解', count: cor },
+        { key: 'understood', label: '理解した', count: und },
+        { key: 'unrated', label: '未学習', count: unr }
+      ];
+      document.getElementById('study-filters').innerHTML = filters.map(f =>
+        `<button class="study-filter-btn ${studyFilter === f.key ? 'active' : ''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`
+      ).join('');
+      document.querySelectorAll('.study-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          studyFilter = btn.dataset.filter;
+          studyCards = getStudyPool();
+          studyIndex = 0; answerShown = false;
+          renderStudyFilters(); renderStudyCard();
+        });
+      });
+    }
 
-      document.getElementById('study-deck-name').textContent = currentDeck;
+    function renderStudyCard() {
+      const qEl = document.getElementById('anki-question'), aEl = document.getElementById('anki-answer');
+      const div = document.getElementById('anki-divider'), showBtn = document.getElementById('show-answer-btn');
+      const rating = document.getElementById('anki-rating'), label = document.getElementById('anki-label');
+      const sdEl = document.getElementById('anki-subdeck');
+
+      document.getElementById('study-deck-name').textContent = currentSubdeck ? `${currentDeck} > ${currentSubdeck}` : currentDeck;
 
       if (studyCards.length === 0) {
-        qEl.textContent = 'カードがありません';
-        aEl.style.display = 'none'; div.style.display = 'none';
-        showBtn.style.display = 'none'; rating.style.display = 'none';
+        qEl.textContent = 'カードがありません'; aEl.style.display = 'none'; div.style.display = 'none';
+        showBtn.style.display = 'none'; rating.style.display = 'none'; sdEl.style.display = 'none';
         document.getElementById('study-progress-text').textContent = '0 / 0';
         document.getElementById('study-progress-fill').style.width = '0%';
-        label.textContent = '';
-        return;
+        label.textContent = ''; return;
       }
 
       const card = studyCards[studyIndex];
       document.getElementById('study-progress-text').textContent = `${studyIndex + 1} / ${studyCards.length}`;
       document.getElementById('study-progress-fill').style.width = `${((studyIndex + 1) / studyCards.length) * 100}%`;
+      qEl.textContent = card.question; aEl.textContent = card.answer;
 
-      qEl.textContent = card.question;
-      aEl.textContent = card.answer;
+      if (card.subdeck) { sdEl.textContent = card.subdeck; sdEl.style.display = 'block'; }
+      else sdEl.style.display = 'none';
 
       if (answerShown) {
-        label.textContent = '問題 + 答え';
-        aEl.style.display = 'block'; div.style.display = 'block';
+        label.textContent = '問題 + 答え'; aEl.style.display = 'block'; div.style.display = 'block';
         showBtn.style.display = 'none'; rating.style.display = 'flex';
       } else {
-        label.textContent = '問題';
-        aEl.style.display = 'none'; div.style.display = 'none';
+        label.textContent = '問題'; aEl.style.display = 'none'; div.style.display = 'none';
         showBtn.style.display = 'block'; rating.style.display = 'none';
       }
     }
@@ -758,41 +632,32 @@
 
     document.querySelectorAll('.anki-rating-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        stats.reviews++;
-        stats[btn.dataset.rating]++;
+        const r = btn.dataset.rating;
+        const card = studyCards[studyIndex];
+        stats.reviews++; stats[r]++;
+        await updateCard(card.id, { lastRating: r });
         await saveStats();
         studyIndex = (studyIndex + 1) % studyCards.length;
         answerShown = false;
-        renderStudyCard();
+        // リフレッシュプール
+        studyCards = getStudyPool();
+        if (studyIndex >= studyCards.length) studyIndex = 0;
+        renderStudyFilters(); renderStudyCard();
       });
     });
 
     document.getElementById('shuffle-btn').addEventListener('click', () => {
-      for (let i = studyCards.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [studyCards[i], studyCards[j]] = [studyCards[j], studyCards[i]];
-      }
-      studyIndex = 0; answerShown = false; renderStudyCard();
-      showToast('シャッフルしました');
+      for (let i = studyCards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [studyCards[i], studyCards[j]] = [studyCards[j], studyCards[i]]; }
+      studyIndex = 0; answerShown = false; renderStudyCard(); showToast('シャッフルしました');
     });
 
-    // Autoplay
     document.getElementById('autoplay-btn').addEventListener('click', () => {
       if (studyCards.length === 0) return;
-      isPlaying = true;
-      document.getElementById('autoplay-bar').classList.remove('hidden');
-      document.getElementById('autoplay-btn').classList.add('active');
-      autoPlayNext();
+      isPlaying = true; document.getElementById('autoplay-bar').classList.remove('hidden');
+      document.getElementById('autoplay-btn').classList.add('active'); autoPlayNext();
     });
     document.getElementById('autoplay-stop').addEventListener('click', stopAutoPlay);
-
-    function stopAutoPlay() {
-      isPlaying = false;
-      if (playTimer) clearTimeout(playTimer);
-      document.getElementById('autoplay-bar').classList.add('hidden');
-      document.getElementById('autoplay-btn').classList.remove('active');
-    }
-
+    function stopAutoPlay() { isPlaying = false; if (playTimer) clearTimeout(playTimer); document.getElementById('autoplay-bar').classList.add('hidden'); document.getElementById('autoplay-btn').classList.remove('active'); }
     function autoPlayNext() {
       if (!isPlaying) return;
       const qD = parseInt(document.getElementById('cfg-q-delay').value) * 1000;
@@ -800,43 +665,66 @@
       answerShown = false; renderStudyCard();
       document.getElementById('autoplay-status').textContent = '問題を表示中...';
       playTimer = setTimeout(() => {
-        if (!isPlaying) return;
-        answerShown = true; renderStudyCard();
+        if (!isPlaying) return; answerShown = true; renderStudyCard();
         document.getElementById('autoplay-status').textContent = '答えを表示中...';
         playTimer = setTimeout(() => {
-          if (!isPlaying) return;
-          stats.reviews++; stats.good++; saveStats();
-          studyIndex = (studyIndex + 1) % studyCards.length;
-          autoPlayNext();
+          if (!isPlaying) return; stats.reviews++; stats.correct++; saveStats();
+          studyIndex = (studyIndex + 1) % studyCards.length; autoPlayNext();
         }, aD);
       }, qD);
     }
 
-    /* ============================================================
-       Manage
-    ============================================================ */
-    function renderManageList() {
-      const dc = cards.filter(c => c.deck === currentDeck);
-      document.getElementById('manage-card-count').textContent = `カード (${dc.length}枚)`;
-      const container = document.getElementById('manage-card-list');
-      if (dc.length === 0) {
-        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';
-        return;
-      }
-      container.innerHTML = dc.map(c => `
-        <div class="card-item">
-          <div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div></div>
-          <div class="card-item-actions">
-            <button class="card-item-btn" data-action="edit" data-id="${c.id}">&#x270f;</button>
-            <button class="card-item-btn" data-action="delete" data-id="${c.id}">&#x1f5d1;</button>
-          </div>
-        </div>`).join('');
-
-      container.querySelectorAll('.card-item-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          if (btn.dataset.action === 'edit') editCard(btn.dataset.id);
-          if (btn.dataset.action === 'delete') doDeleteCard(btn.dataset.id);
+    /* ========== Manage ========== */
+    function renderManageSubdecks() {
+      const deck = getDeck(currentDeck);
+      if (!deck) return;
+      const chips = document.getElementById('subdeck-chips');
+      chips.innerHTML = deck.subdecks.map(sd => `<div class="subdeck-chip">${esc(sd)}<span class="subdeck-chip-del" data-sd="${esc(sd)}">&#x2715;</span></div>`).join('');
+      chips.querySelectorAll('.subdeck-chip-del').forEach(el => {
+        el.addEventListener('click', async () => {
+          const sd = el.dataset.sd;
+          if (!confirm(`サブデッキ「${sd}」を削除？\nカードは直下に移動します。`)) return;
+          for (const c of cards) { if (c.deck === currentDeck && c.subdeck === sd) { c.subdeck = ''; if (!isGuest) await cardsCol().doc(c.id).update({ subdeck: '' }); } }
+          if (isGuest) LS.save('fc_cards', cards);
+          deck.subdecks = deck.subdecks.filter(s => s !== sd); await saveDecks();
+          renderManageSubdecks(); renderManageList();
         });
+      });
+      // サブデッキセレクト更新
+      const sel = document.getElementById('card-subdeck-select');
+      sel.innerHTML = '<option value="">なし（直下）</option>' + deck.subdecks.map(sd => `<option value="${esc(sd)}">${esc(sd)}</option>`).join('');
+      document.getElementById('subdeck-select-group').style.display = deck.subdecks.length > 0 ? 'block' : 'none';
+    }
+
+    document.getElementById('add-subdeck-btn').addEventListener('click', async () => {
+      const input = document.getElementById('new-subdeck-input');
+      const name = input.value.trim();
+      const deck = getDeck(currentDeck);
+      if (name && deck && !deck.subdecks.includes(name)) {
+        deck.subdecks.push(name); await saveDecks(); input.value = '';
+        renderManageSubdecks(); showToast(`サブデッキ「${name}」を追加`);
+      }
+    });
+    document.getElementById('new-subdeck-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-subdeck-btn').click(); } });
+
+    function renderManageList() {
+      const dc = deckCards(currentDeck);
+      document.getElementById('manage-card-count').textContent = `カード (${dc.length}枚)`;
+      const el = document.getElementById('manage-card-list');
+      if (dc.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>'; return; }
+      el.innerHTML = dc.map(c => {
+        let tags = '';
+        if (c.subdeck) tags += `<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;
+        if (c.lastRating === 'incorrect') tags += '<span class="card-item-tag tag-incorrect">不正解</span>';
+        if (c.lastRating === 'correct') tags += '<span class="card-item-tag tag-correct">正解</span>';
+        if (c.lastRating === 'understood') tags += '<span class="card-item-tag tag-understood">理解した</span>';
+        return `<div class="card-item">
+          <div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags ? `<div class="card-item-tags">${tags}</div>` : ''}</div>
+          <div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div>
+        </div>`;
+      }).join('');
+      el.querySelectorAll('.card-item-btn').forEach(btn => {
+        btn.addEventListener('click', () => { if (btn.dataset.act === 'edit') editCardAction(btn.dataset.id); if (btn.dataset.act === 'del') deleteCardAction(btn.dataset.id); });
       });
     }
 
@@ -844,140 +732,83 @@
       e.preventDefault();
       const q = document.getElementById('card-question').value.trim();
       const a = document.getElementById('card-answer').value.trim();
+      const sd = document.getElementById('card-subdeck-select').value;
       if (!q || !a) return;
-
       if (editingId) {
-        await updateCard(editingId, { question: q, answer: a });
-        resetForm();
-        showToast('カードを更新しました');
+        await updateCard(editingId, { question: q, answer: a, subdeck: sd }); resetForm(); showToast('更新しました');
       } else {
-        await addCard({ question: q, answer: a, deck: currentDeck, created: new Date().toISOString() });
-        showToast('カードを追加しました');
+        await addCard({ question: q, answer: a, deck: currentDeck, subdeck: sd, lastRating: null, created: new Date().toISOString() }); showToast('追加しました');
       }
-      document.getElementById('card-question').value = '';
-      document.getElementById('card-answer').value = '';
+      document.getElementById('card-question').value = ''; document.getElementById('card-answer').value = '';
       renderManageList();
     });
 
-    function editCard(id) {
-      const card = cards.find(c => c.id === id);
-      if (!card) return;
+    function editCardAction(id) {
+      const card = cards.find(c => c.id === id); if (!card) return;
       editingId = id;
       document.getElementById('card-question').value = card.question;
       document.getElementById('card-answer').value = card.answer;
+      document.getElementById('card-subdeck-select').value = card.subdeck || '';
       document.getElementById('manage-form-title').textContent = 'カードを編集';
       document.getElementById('card-submit-btn').textContent = '更新';
       document.getElementById('card-cancel-btn').style.display = 'block';
       document.getElementById('card-question').scrollIntoView({ behavior: 'smooth' });
     }
-
-    async function doDeleteCard(id) {
-      if (!confirm('このカードを削除しますか？')) return;
-      await removeCard(id);
-      renderManageList();
-      showToast('カードを削除しました');
-    }
-
+    async function deleteCardAction(id) { if (!confirm('削除しますか？')) return; await removeCard(id); renderManageList(); showToast('削除しました'); }
     function resetForm() {
-      editingId = null;
-      document.getElementById('card-question').value = '';
-      document.getElementById('card-answer').value = '';
+      editingId = null; document.getElementById('card-question').value = ''; document.getElementById('card-answer').value = '';
       document.getElementById('manage-form-title').textContent = 'カードを追加';
-      document.getElementById('card-submit-btn').textContent = '追加';
-      document.getElementById('card-cancel-btn').style.display = 'none';
+      document.getElementById('card-submit-btn').textContent = '追加'; document.getElementById('card-cancel-btn').style.display = 'none';
     }
     document.getElementById('card-cancel-btn').addEventListener('click', resetForm);
 
-    /* ============================================================
-       Stats
-    ============================================================ */
+    /* ========== Stats ========== */
     function renderStats() {
       document.getElementById('s-total-cards').textContent = cards.length;
       document.getElementById('s-total-reviews').textContent = stats.reviews;
-      document.getElementById('s-easy').textContent = stats.easy;
-      document.getElementById('s-good').textContent = stats.good;
-      document.getElementById('s-hard').textContent = stats.hard;
+      document.getElementById('s-incorrect').textContent = stats.incorrect;
+      document.getElementById('s-correct').textContent = stats.correct;
+      document.getElementById('s-understood').textContent = stats.understood;
       document.getElementById('s-decks').textContent = decks.length;
     }
     document.getElementById('reset-stats-btn').addEventListener('click', async () => {
-      if (!confirm('統計をリセットしますか？')) return;
-      stats = { reviews: 0, easy: 0, good: 0, hard: 0 };
-      await saveStats();
-      renderStats();
-      showToast('統計をリセットしました');
+      if (!confirm('統計をリセット？')) return;
+      stats = { reviews: 0, incorrect: 0, correct: 0, understood: 0 }; await saveStats(); renderStats(); showToast('リセットしました');
     });
 
-    /* ============================================================
-       Settings Modal
-    ============================================================ */
+    /* ========== Settings ========== */
     document.getElementById('settings-btn').addEventListener('click', () => document.getElementById('settings-modal').classList.add('active'));
     document.getElementById('settings-close').addEventListener('click', () => document.getElementById('settings-modal').classList.remove('active'));
-    document.getElementById('settings-modal').addEventListener('click', (e) => {
-      if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-    });
+    document.getElementById('settings-modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('active'); });
 
-    /* ============================================================
-       Import / Export
-    ============================================================ */
+    /* ========== Import / Export ========== */
     document.getElementById('export-btn').addEventListener('click', () => {
-      const data = { cards, decks, stats, exportDate: new Date().toISOString() };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ankimaster_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const blob = new Blob([JSON.stringify({ cards, decks, stats, exportDate: new Date().toISOString() }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = `ankimaster_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url);
     });
     document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
     document.getElementById('import-file').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+      const file = e.target.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = async (ev) => {
         try {
           const data = JSON.parse(ev.target.result);
           if (data.cards) {
-            const addMode = confirm('既存に追加しますか？\nOK=追加 / キャンセル=置き換え');
-            const newCards = data.cards;
-            if (addMode) {
-              for (const c of newCards) {
-                await addCard({ question: c.question, answer: c.answer, deck: c.deck || 'デフォルト', created: c.created || new Date().toISOString() });
-              }
-            } else {
-              // 既存を全削除してからインポート
-              if (!isGuest) {
-                for (const c of cards) await cardsCol().doc(c.id).delete();
-              }
-              cards = [];
-              for (const c of newCards) {
-                await addCard({ question: c.question, answer: c.answer, deck: c.deck || 'デフォルト', created: c.created || new Date().toISOString() });
-              }
-            }
+            const addMode = confirm('既存に追加？\nOK=追加 / キャンセル=置き換え');
+            if (!addMode) { if (!isGuest) { for (const c of cards) await cardsCol().doc(c.id).delete(); } cards = []; }
+            for (const c of data.cards) await addCard({ question: c.question, answer: c.answer, deck: c.deck || 'デフォルト', subdeck: c.subdeck || '', lastRating: c.lastRating || null, created: c.created || new Date().toISOString() });
           }
-          if (data.decks) {
-            decks = [...new Set([...decks, ...data.decks])];
-            await saveDecks();
-          }
-          renderDeckList();
-          showToast('インポート完了！');
-        } catch { showToast('読み込みに失敗しました'); }
+          if (data.decks) { decks = migrateDecks([...new Set([...decks.map(d => d.name), ...(Array.isArray(data.decks) ? data.decks.map(d => typeof d === 'string' ? d : d.name) : [])])].map(n => ({ name: n, subdecks: getDeck(n)?.subdecks || (data.decks.find(d => d.name === n)?.subdecks) || [] }))); await saveDecks(); }
+          renderDeckList(); showToast('インポート完了！');
+        } catch { showToast('読み込み失敗'); }
       };
-      reader.readAsText(file);
-      e.target.value = '';
+      reader.readAsText(file); e.target.value = '';
     });
 
-    /* ============================================================
-       Util
-    ============================================================ */
+    /* ========== Util ========== */
     function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-
-    function showToast(msg) {
-      const el = document.getElementById('toast');
-      el.textContent = msg;
-      el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 2500);
-    }
+    function showToast(msg) { const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2500); }
   </script>
 </body>
 </html>
