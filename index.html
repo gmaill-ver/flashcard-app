@@ -320,25 +320,28 @@ const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d
 /* ========== Data ========== */
 function userDoc(){return db.collection('users').doc(currentUser.uid)}
 function cardsCol(){return userDoc().collection('cards')}
-function migrateDecks(r){if(!r||!r.length)return[{name:'デフォルト',subdecks:[],publishedId:null}];if(typeof r[0]==='string')return r.map(n=>({name:n,subdecks:[],publishedId:null}));return r.map(d=>({name:d.name,subdecks:d.subdecks||[],publishedId:d.publishedId||null}))}
+function migrateDecks(r){if(!r||!r.length)return[{name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}];if(typeof r[0]==='string')return r.map(n=>({name:n,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}));return r.map(d=>({name:d.name,subdecks:d.subdecks||[],publishedId:d.publishedId||null,cardCount:d.cardCount!=null?d.cardCount:0,ratings:d.ratings||{incorrect:0,correct:0,understood:0}}))}
 function migrateStats(r){const s=r||{};return{reviews:s.reviews||0,incorrect:s.incorrect||s.hard||0,correct:s.correct||s.good||0,understood:s.understood||s.easy||0}}
 
 async function loadData(){
-  if(isGuest){decks=migrateDecks(LS.load('fc_decks',null));cards=LS.load('fc_cards',[]);stats=migrateStats(LS.load('fc_stats',null));if(!cards.length)seedSample();return}
+  if(isGuest){decks=migrateDecks(LS.load('fc_decks',null));cards=LS.load('fc_cards',[]);stats=migrateStats(LS.load('fc_stats',null));if(!cards.length)seedSample();syncAllDeckMeta();return}
   try{
-    const doc=await userDoc().get();
-    if(doc.exists){const d=doc.data();decks=migrateDecks(d.decks);stats=migrateStats(d.stats)}
-    else{decks=[{name:'デフォルト',subdecks:[],publishedId:null}];stats={reviews:0,incorrect:0,correct:0,understood:0};await userDoc().set({decks,stats})}
-    const snap=await cardsCol().orderBy('created').get();
-    cards=snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(!cards.length)await seedFS();
+    const doc=await userDoc().get();let needsMeta=false;
+    if(doc.exists){const d=doc.data(),raw=d.decks;decks=migrateDecks(raw);stats=migrateStats(d.stats);needsMeta=raw&&raw.length>0&&raw[0].cardCount==null}
+    else{decks=[{name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}];stats={reviews:0,incorrect:0,correct:0,understood:0};await userDoc().set({decks,stats});await seedFS();syncAllDeckMeta();await saveDecks()}
+    if(needsMeta){const snap=await cardsCol().get();const all=snap.docs.map(d=>({id:d.id,...d.data()}));for(const dk of decks){const dc=all.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}};await saveDecks()}
+    cards=[];
   }catch(e){console.error(e);showToast('読み込み失敗')}
 }
 async function saveDecks(){if(isGuest){LS.save('fc_decks',decks);return}try{await userDoc().update({decks})}catch(e){console.error(e)}}
 async function saveStats(){if(isGuest){LS.save('fc_stats',stats);return}try{await userDoc().update({stats})}catch(e){console.error(e)}}
-async function addCard(c){if(isGuest){c.id=Date.now().toString()+Math.random();cards.push(c);LS.save('fc_cards',cards);return}try{const r=await cardsCol().add(c);cards.push({id:r.id,...c})}catch(e){console.error(e);showToast('保存失敗')}}
+async function addCard(c,skipMeta){if(isGuest){c.id=Date.now().toString()+Math.random();cards.push(c);LS.save('fc_cards',cards)}else{try{const r=await cardsCol().add(c);cards.push({id:r.id,...c})}catch(e){console.error(e);showToast('保存失敗');return}}if(!skipMeta){const dk=getDeck(c.deck);if(dk){dk.cardCount=(dk.cardCount||0)+1;await saveDecks()}}}
 async function updateCard(id,data){const i=cards.findIndex(c=>c.id===id);if(i===-1)return;cards[i]={...cards[i],...data};if(isGuest){LS.save('fc_cards',cards);return}try{await cardsCol().doc(id).update(data)}catch(e){console.error(e)}}
-async function removeCard(id){cards=cards.filter(c=>c.id!==id);if(isGuest){LS.save('fc_cards',cards);return}try{await cardsCol().doc(id).delete()}catch(e){console.error(e)}}
+async function removeCard(id){const old=cards.find(c=>c.id===id);cards=cards.filter(c=>c.id!==id);if(isGuest){LS.save('fc_cards',cards)}else{try{await cardsCol().doc(id).delete()}catch(e){console.error(e)}}if(old){const dk=getDeck(old.deck);if(dk){dk.cardCount=Math.max(0,(dk.cardCount||0)-1);if(old.lastRating&&dk.ratings)dk.ratings[old.lastRating]=Math.max(0,(dk.ratings[old.lastRating]||0)-1);await saveDecks()}}}
+
+function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
+function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
+async function loadDeckCards(name){if(isGuest)return;try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){console.error(e);showToast('カード読み込み失敗')}}
 
 function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'2',question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'3',question:'尊属殺重罰規定違憲判決のポイントは？',answer:'刑法200条は法の下の平等（憲法14条1項）に違反し無効。',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];LS.save('fc_cards',cards)}
 async function seedFS(){const ss=[{question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];for(const s of ss){const r=await cardsCol().add(s);cards.push({id:r.id,...s})}}
@@ -352,14 +355,14 @@ async function initApp(){document.getElementById('loading').classList.remove('hi
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
-function navigateTo(page,data){
+async function navigateTo(page,data){
   stopAutoPlay();isPublicStudy=false;currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='デッキ';renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
-    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';resetForm();renderManageSubdecks();renderManageList();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
   }
 }
@@ -387,22 +390,24 @@ function countU(a){return a.filter(c=>!c.lastRating).length}
 function renderDeckList(){
   const el=document.getElementById('deck-list');let html='';
   for(const d of decks){
-    const dc=deckCards(d.name),inc=countR(dc,'incorrect'),cor=countR(dc,'correct'),und=countR(dc,'understood');
-    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3><div class="deck-meta"><span>${dc.length}枚</span></div><div class="deck-rating-dots">${inc?`<span class="dot-incorrect">&#x2716; ${inc}</span>`:''}${cor?`<span class="dot-correct">&#x2714; ${cor}</span>`:''}${und?`<span class="dot-understood">&#x2605; ${und}</span>`:''}</div></div><div class="deck-card-actions"><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button><span class="deck-arrow">&#x276f;</span></div></div>`;
-    for(const sd of d.subdecks){const sc=subdeckCards(d.name,sd);html+=`<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><div><h4>${esc(sd)}</h4><div class="subdeck-meta">${sc.length}枚</div></div><span class="deck-arrow">&#x276f;</span></div>`}
+    const total=d.cardCount||0,inc=d.ratings?.incorrect||0,cor=d.ratings?.correct||0,und=d.ratings?.understood||0;
+    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3><div class="deck-meta"><span>${total}枚</span></div><div class="deck-rating-dots">${inc?`<span class="dot-incorrect">&#x2716; ${inc}</span>`:''}${cor?`<span class="dot-correct">&#x2714; ${cor}</span>`:''}${und?`<span class="dot-understood">&#x2605; ${und}</span>`:''}</div></div><div class="deck-card-actions"><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button><span class="deck-arrow">&#x276f;</span></div></div>`;
+    for(const sd of d.subdecks){html+=`<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><div><h4>${esc(sd)}</h4></div><span class="deck-arrow">&#x276f;</span></div>`}
   }
   el.innerHTML=html;
   el.querySelectorAll('.deck-card').forEach(c=>{c.addEventListener('click',e=>{const t=e.target.closest('[data-act]'),dn=c.dataset.deck;if(t){e.stopPropagation();if(t.dataset.act==='manage')navigateTo('manage',dn);if(t.dataset.act==='rename')renameDeckAction(dn)}else navigateTo('study',{deck:dn})})});
   el.querySelectorAll('.subdeck-card').forEach(c=>{c.addEventListener('click',()=>navigateTo('study',{deck:c.dataset.deck,subdeck:c.dataset.subdeck}))});
 }
 
-document.getElementById('add-deck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-deck-input'),n=i.value.trim();if(n&&!getDeck(n)){decks.push({name:n,subdecks:[],publishedId:null});await saveDecks();i.value='';renderDeckList();showToast(`「${n}」を追加`)}});
+document.getElementById('add-deck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-deck-input'),n=i.value.trim();if(n&&!getDeck(n)){decks.push({name:n,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});await saveDecks();i.value='';renderDeckList();showToast(`「${n}」を追加`)}});
 document.getElementById('new-deck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-deck-btn').click()}});
 
 async function deleteDeckAction(name){
   if(!confirm(`「${name}」を削除？\nカードはデフォルトに移動。`))return;
-  for(const c of cards){if(c.deck===name){c.deck='デフォルト';c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({deck:'デフォルト',subdeck:''})}}
-  if(isGuest)LS.save('fc_cards',cards);
+  const delDeck=getDeck(name);const defDeck=getDeck('デフォルト');
+  if(isGuest){for(const c of cards){if(c.deck===name){c.deck='デフォルト';c.subdeck=''}}LS.save('fc_cards',cards)}
+  else{const snap=await cardsCol().where('deck','==',name).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{deck:'デフォルト',subdeck:''}));await batch.commit()}}
+  if(defDeck&&delDeck){defDeck.cardCount=(defDeck.cardCount||0)+(delDeck.cardCount||0);defDeck.ratings={incorrect:(defDeck.ratings?.incorrect||0)+(delDeck.ratings?.incorrect||0),correct:(defDeck.ratings?.correct||0)+(delDeck.ratings?.correct||0),understood:(defDeck.ratings?.understood||0)+(delDeck.ratings?.understood||0)}}
   decks=decks.filter(d=>d.name!==name);await saveDecks();renderDeckList();
 }
 
@@ -413,8 +418,8 @@ async function renameDeckAction(oldName){
   if(getDeck(nn)){showToast('同じ名前のデッキがあります');return}
   const deck=getDeck(oldName);if(!deck)return;
   deck.name=nn;
-  for(const c of cards){if(c.deck===oldName){c.deck=nn;if(!isGuest)await cardsCol().doc(c.id).update({deck:nn})}}
-  if(isGuest)LS.save('fc_cards',cards);
+  if(isGuest){for(const c of cards){if(c.deck===oldName)c.deck=nn}LS.save('fc_cards',cards)}
+  else{const snap=await cardsCol().where('deck','==',oldName).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{deck:nn}));await batch.commit()}}
   await saveDecks();renderDeckList();showToast(`「${nn}」に変更しました`);
 }
 
@@ -454,9 +459,11 @@ async function copyPublicDeck(id){
     const d=doc.data();
     const deckName=d.title;
     let finalName=deckName;let cnt=1;while(getDeck(finalName)){finalName=`${deckName} (${cnt++})`}
-    decks.push({name:finalName,subdecks:[],publishedId:null});await saveDecks();
+    decks.push({name:finalName,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
     const snap=await db.collection('publicDecks').doc(id).collection('cards').orderBy('order').get();
-    for(const c of snap.docs){const cd=c.data();await addCard({question:cd.question,answer:cd.answer,deck:finalName,subdeck:'',lastRating:null,created:new Date().toISOString()})}
+    for(const c of snap.docs){const cd=c.data();await addCard({question:cd.question,answer:cd.answer,deck:finalName,subdeck:'',lastRating:null,created:new Date().toISOString()},true)}
+    const newDeck=getDeck(finalName);if(newDeck){newDeck.cardCount=snap.docs.length;newDeck.ratings={incorrect:0,correct:0,understood:0}}
+    cards=[];await saveDecks();
     document.getElementById('loading').classList.add('hidden');
     showToast(`「${finalName}」にコピーしました`);setHomeTab('my');renderDeckList();
   }catch(e){document.getElementById('loading').classList.add('hidden');console.error(e);showToast('コピー失敗')}
@@ -501,9 +508,10 @@ document.getElementById('anki-card').addEventListener('click',()=>{if(!answerSho
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
   const r=b.dataset.rating;
   if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
-  const card=studyCards[studyIndex];stats.reviews++;stats[r]++;
+  const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
   await updateCard(card.id,upd);await saveStats();
+  const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
   studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
   studyCards=getStudyPool();if(studyIndex>=studyCards.length)studyIndex=0;
   renderStudyFilters();renderStudyCard();
@@ -599,7 +607,7 @@ function resetForm(){editingId=null;document.getElementById('card-question').val
 document.getElementById('card-cancel-btn').addEventListener('click',resetForm);
 
 /* ========== Stats ========== */
-function renderStats(){document.getElementById('s-total-cards').textContent=cards.length;document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-decks').textContent=decks.length}
+function renderStats(){document.getElementById('s-total-cards').textContent=decks.reduce((s,d)=>s+(d.cardCount||0),0);document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-decks').textContent=decks.length}
 document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};await saveStats();renderStats();showToast('リセットしました')});
 
 /* ========== Settings ========== */
@@ -608,14 +616,14 @@ document.getElementById('settings-close').addEventListener('click',()=>document.
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 document.getElementById('delete-deck-row').addEventListener('click',()=>{const sec=document.getElementById('delete-deck-section');if(sec.style.display==='none'){sec.style.display='block';const sel=document.getElementById('delete-deck-select');const deletable=decks.filter(d=>d.name!=='デフォルト');if(!deletable.length){showToast('削除できるデッキがありません');sec.style.display='none';return}sel.innerHTML=deletable.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}else{sec.style.display='none'}});
 document.getElementById('delete-deck-confirm').addEventListener('click',()=>{const name=document.getElementById('delete-deck-select').value;if(name)deleteDeckAction(name);document.getElementById('delete-deck-section').style.display='none'});
-document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null;if(!isGuest)await cardsCol().doc(c.id).update({incorrectCount:0,correctCount:0,lastRating:null})}if(isGuest)LS.save('fc_cards',cards);showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
+document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;if(isGuest){for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null}LS.save('fc_cards',cards)}else{const snap=await cardsCol().get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{incorrectCount:0,correctCount:0,lastRating:null}));await batch.commit()}}for(const dk of decks){dk.ratings={incorrect:0,correct:0,understood:0}}await saveDecks();showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
 document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 
 /* ========== Import/Export ========== */
-document.getElementById('export-btn').addEventListener('click',()=>{const b=new Blob([JSON.stringify({cards,decks,stats,exportDate:new Date().toISOString()},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`ankimaster_${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(u)});
+document.getElementById('export-btn').addEventListener('click',async()=>{let allCards=cards;if(!isGuest&&currentUser){try{const snap=await cardsCol().get();allCards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){console.error(e);showToast('エクスポート失敗');return}}const b=new Blob([JSON.stringify({cards:allCards,decks,stats,exportDate:new Date().toISOString()},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`ankimaster_${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(u)});
 document.getElementById('import-btn').addEventListener('click',()=>document.getElementById('import-file').click());
-document.getElementById('import-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev=>{try{const d=JSON.parse(ev.target.result);if(d.cards){const add=confirm('既存に追加？\nOK=追加 / キャンセル=置き換え');if(!add){if(!isGuest){for(const c of cards)await cardsCol().doc(c.id).delete()}cards=[]}for(const c of d.cards)await addCard({question:c.question,answer:c.answer,deck:c.deck||'デフォルト',subdeck:c.subdeck||'',lastRating:c.lastRating||null,created:c.created||new Date().toISOString()})}if(d.decks){const names=[...new Set([...decks.map(x=>x.name),...(d.decks.map(x=>typeof x==='string'?x:x.name))])];decks=names.map(n=>getDeck(n)||{name:n,subdecks:(d.decks.find(x=>(typeof x==='string'?x:x.name)===n))?.subdecks||[],publishedId:null});await saveDecks()}renderDeckList();showToast('インポート完了！')}catch{showToast('読み込み失敗')}};r.readAsText(f);e.target.value=''});
+document.getElementById('import-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev=>{try{const d=JSON.parse(ev.target.result);if(d.cards){const add=confirm('既存に追加？\nOK=追加 / キャンセル=置き換え');if(!add){if(!isGuest){const snap=await cardsCol().get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const bt=db.batch();docs.slice(i,i+400).forEach(dd=>bt.delete(dd.ref));await bt.commit()}}cards=[]}for(const c of d.cards)await addCard({question:c.question,answer:c.answer,deck:c.deck||'デフォルト',subdeck:c.subdeck||'',lastRating:c.lastRating||null,incorrectCount:c.incorrectCount||0,correctCount:c.correctCount||0,created:c.created||new Date().toISOString()},true)}if(d.decks){const names=[...new Set([...decks.map(x=>x.name),...(d.decks.map(x=>typeof x==='string'?x:x.name))])];decks=names.map(n=>getDeck(n)||{name:n,subdecks:(d.decks.find(x=>(typeof x==='string'?x:x.name)===n))?.subdecks||[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}})}if(isGuest){syncAllDeckMeta()}else{const snap=await cardsCol().get();cards=snap.docs.map(dd=>({id:dd.id,...dd.data()}));syncAllDeckMeta();cards=[]}await saveDecks();renderDeckList();showToast('インポート完了！')}catch{showToast('読み込み失敗')}};r.readAsText(f);e.target.value=''});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
