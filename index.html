@@ -37,7 +37,7 @@
     .header-user:hover{background:#eee}
 
     /* ホームタブ */
-    .home-tabs{display:flex;background:#fff;border-bottom:1px solid #ddd;margin-bottom:16px}
+    .home-tabs{display:flex;background:#fff;border-bottom:1px solid #ddd;margin:0 -16px 16px;padding:0 16px}
     .home-tab{flex:1;padding:12px;border:none;background:none;font-size:.9rem;cursor:pointer;color:#888;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}
     .home-tab.active{color:#2196f3;border-bottom-color:#2196f3}
     .home-section{display:none}.home-section.active{display:block}
@@ -362,7 +362,7 @@ async function navigateTo(page,data){
   stopAutoPlay();isPublicStudy=false;currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
-    case'home':showPage('home');back.classList.remove('visible');title.textContent='デッキ';renderDeckList();setHomeTab(activeHomeTab);break;
+    case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラ暗記Anki';renderDeckList();setHomeTab(activeHomeTab);break;
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
@@ -503,7 +503,7 @@ function renderStudyCard(){
 }
 
 document.getElementById('show-answer-btn').addEventListener('click',()=>{answerShown=true;renderStudyCard()});
-document.getElementById('anki-card').addEventListener('click',()=>{if(!answerShown&&studyCards.length>0){answerShown=true;renderStudyCard()}});
+document.getElementById('anki-card').addEventListener('click',()=>{if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}});
 
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
   const r=b.dataset.rating;
