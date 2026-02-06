@@ -87,7 +87,7 @@
     .study-filter-btn.active{background:#333;color:#fff;border-color:#333}
     .study-filter-btn .filter-count{margin-left:4px;opacity:.7}
     .study-sort{margin-bottom:12px}.study-sort select{padding:6px 12px;border:1px solid #ddd;border-radius:8px;font-size:.8rem;background:#fff;color:#555;cursor:pointer}
-    .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px 24px;text-align:center;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
+    .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:32px 24px;text-align:left;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
     .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
     .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
     .anki-card-stats{position:absolute;bottom:10px;right:12px;font-size:.9rem;letter-spacing:2px;text-align:right;max-width:80%;word-break:break-all;line-height:1.4}.mark-x{color:#e57373}.mark-o{color:#66bb6a}
@@ -243,7 +243,7 @@
         <div style="display:flex;gap:8px"><button type="submit" class="btn btn-blue" style="flex:1" id="card-submit-btn">追加</button><button type="button" class="btn btn-gray" id="card-cancel-btn" style="display:none">キャンセル</button></div>
       </form>
     </div>
-    <div class="card-list-section"><h3 id="manage-card-count">カード (0枚)</h3><div id="manage-card-list"></div></div>
+    <div class="card-list-section"><h3 id="manage-card-count">カード (0枚)</h3><div id="manage-subdeck-filter" style="margin-bottom:10px"></div><div id="manage-card-list"></div></div>
   </div>
 
   <!-- 統計 -->
@@ -301,7 +301,7 @@ let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null;
-let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set();
+let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='';
 
 /* ========== LS ========== */
 const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},save(k,v){localStorage.setItem(k,JSON.stringify(v))}};
@@ -351,7 +351,7 @@ async function navigateTo(page,data){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='デッキ';renderDeckList();setHomeTab(activeHomeTab);break;
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
-    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
   }
 }
@@ -581,9 +581,12 @@ document.getElementById('new-subdeck-input').addEventListener('keydown',e=>{if(e
 
 function renderManageList(){
   const dc=deckCards(currentDeck);document.getElementById('manage-card-count').textContent=`カード (${dc.length}枚)`;
-  const el=document.getElementById('manage-card-list');
+  const el=document.getElementById('manage-card-list');const fEl=document.getElementById('manage-subdeck-filter');
+  const deck=getDeck(currentDeck),sds=deck?.subdecks||[];
+  if(sds.length>0){fEl.innerHTML=`<select id="subdeck-filter-select" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;color:#555"><option value="">全て</option>${sds.map(s=>`<option value="${esc(s)}"${manageSubdeckFilter===s?' selected':''}>${esc(s)}</option>`).join('')}</select>`;document.getElementById('subdeck-filter-select').addEventListener('change',e=>{manageSubdeckFilter=e.target.value;renderManageList()})}else{fEl.innerHTML=''}
   if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';return}
-  el.innerHTML=dc.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.lastRating==='incorrect')tags+='<span class="card-item-tag tag-incorrect">不正解</span>';if(c.lastRating==='correct')tags+='<span class="card-item-tag tag-correct">正解</span>';if(c.lastRating==='understood')tags+='<span class="card-item-tag tag-understood">理解した</span>';if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
+  const filtered=manageSubdeckFilter?dc.filter(c=>c.subdeck===manageSubdeckFilter):dc;
+  el.innerHTML=filtered.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
   el.querySelectorAll('.card-item-btn').forEach(b=>{b.addEventListener('click',()=>{if(b.dataset.act==='edit')editCardAction(b.dataset.id);if(b.dataset.act==='del')deleteCardAction(b.dataset.id)})});
 }
 
