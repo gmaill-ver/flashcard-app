@@ -91,7 +91,6 @@
     .study-icon-btn{width:36px;height:36px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#555;transition:all .2s;flex-shrink:0}
     .study-icon-btn:hover{background:#f0f0f0}.study-icon-btn.active{background:#e3f2fd;border-color:#2196f3;color:#1565c0}
     #shuffle-btn{filter:grayscale(1) opacity(.45)}
-    #autoplay-btn{color:#2196f3}
     .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:32px 24px;text-align:left;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
     .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
     .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
@@ -214,7 +213,7 @@
     <div class="anki-rating" id="anki-rating" style="display:none">
       <button class="anki-rating-btn correct" data-rating="correct">◯</button>
       <button class="anki-rating-btn incorrect" data-rating="incorrect">×</button>
-      <button class="anki-rating-btn understood" data-rating="understood">理解</button>
+      <button class="anki-rating-btn understood" data-rating="understood">&#x1f44d;</button>
     </div>
   </div>
 
@@ -351,7 +350,7 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';studySort=null;if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
@@ -461,7 +460,7 @@ async function copyPublicDeck(id){
 function getStudyPool(){
   let pool;if(currentSubdeck)pool=subdeckCards(currentDeck,currentSubdeck);else pool=deckCards(currentDeck);
   if(studyFilter!=='all'){if(studyFilter==='unrated')pool=pool.filter(c=>!c.lastRating);else pool=pool.filter(c=>c.lastRating===studyFilter)}
-  if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
+  if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
 function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()}
@@ -469,12 +468,12 @@ function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
   const pool=currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
-  const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'理解',count:countR(pool,'understood')}];
+  const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
-  document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
+  document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;LS.save('fc_studyFilter',studyFilter);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
   sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
   document.getElementById('study-sort-select').value=studySort||'';
-  document.getElementById('study-sort-select').addEventListener('change',e=>{if(e.target.value==='shuffle'){for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;e.target.value='';studySort=null;renderStudyCard();showToast('シャッフルしました');return}studySort=e.target.value||null;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
+  document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
 function renderStudyCard(){
   const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck'),cs=document.getElementById('anki-card-stats');
@@ -505,7 +504,7 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   renderStudyFilters();renderStudyCard();
 })});
 
-document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
+document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){studySort='shuffle';LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;const sel=document.getElementById('study-sort-select');if(sel)sel.value='shuffle';renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
 function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;&#xfe0e;';ap.classList.remove('active')}}
 function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct');saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
 
