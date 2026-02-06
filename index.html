@@ -8,210 +8,177 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif; background: #f0f0f0; min-height: 100vh; color: #333; }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;background:#f0f0f0;min-height:100vh;color:#333}
+    .page{display:none;max-width:600px;margin:0 auto;padding:0 16px 40px;animation:fadeIn .25s ease}
+    .page.active{display:block}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
-    .page { display: none; max-width: 600px; margin: 0 auto; padding: 0 16px 40px; animation: fadeIn 0.25s ease; }
-    .page.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .login-page{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center}
+    .login-logo{font-size:3rem;margin-bottom:8px}.login-title{font-size:1.6rem;font-weight:700;margin-bottom:4px}.login-sub{font-size:.9rem;color:#888;margin-bottom:40px}
+    .login-btn{display:flex;align-items:center;gap:12px;padding:14px 32px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:1rem;cursor:pointer;transition:all .2s;width:280px;justify-content:center;margin-bottom:12px}
+    .login-btn:hover{background:#f5f5f5;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    .login-btn-google{border-color:#4285f4;font-weight:500}.login-btn-guest{border-color:#ccc;color:#666}.login-google-icon{width:20px;height:20px}
 
-    /* ログイン */
-    .login-page { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; text-align: center; }
-    .login-logo { font-size: 3rem; margin-bottom: 8px; }
-    .login-title { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
-    .login-sub { font-size: 0.9rem; color: #888; margin-bottom: 40px; }
-    .login-btn { display: flex; align-items: center; gap: 12px; padding: 14px 32px; border: 1px solid #ddd; border-radius: 10px; background: #fff; font-size: 1rem; cursor: pointer; transition: all 0.2s; width: 280px; justify-content: center; margin-bottom: 12px; }
-    .login-btn:hover { background: #f5f5f5; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .login-btn-google { border-color: #4285f4; font-weight: 500; }
-    .login-btn-guest { border-color: #ccc; color: #666; }
-    .login-google-icon { width: 20px; height: 20px; }
+    .loading-overlay{position:fixed;inset:0;background:#f0f0f0;z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+    .loading-overlay.hidden{display:none}
+    .spinner{width:36px;height:36px;border:3px solid #ddd;border-top-color:#2196f3;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* ローディング */
-    .loading-overlay { position: fixed; inset: 0; background: #f0f0f0; z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
-    .loading-overlay.hidden { display: none; }
-    .spinner { width: 36px; height: 36px; border: 3px solid #ddd; border-top-color: #2196f3; border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .app-header{background:#fff;border-bottom:1px solid #ddd;padding:12px 16px;margin-bottom:0;display:flex;align-items:center;gap:10px}
+    .app-header h1{font-size:1.05rem;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .header-back{background:none;border:none;font-size:1.4rem;cursor:pointer;color:#2196f3;padding:4px 8px;display:none}
+    .header-back.visible{display:block}
+    .header-actions{display:flex;gap:4px;align-items:center}
+    .header-icon-btn{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:6px 8px;border-radius:6px;color:#555}
+    .header-icon-btn:hover{background:#eee}
+    .header-user{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;background:#f5f5f5;font-size:.8rem;color:#555;cursor:pointer}
+    .header-user:hover{background:#eee}
 
-    /* ヘッダー */
-    .app-header { background: #fff; border-bottom: 1px solid #ddd; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
-    .app-header h1 { font-size: 1.05rem; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .header-back { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #2196f3; padding: 4px 8px; display: none; }
-    .header-back.visible { display: block; }
-    .header-actions { display: flex; gap: 4px; align-items: center; }
-    .header-icon-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 6px 8px; border-radius: 6px; color: #555; }
-    .header-icon-btn:hover { background: #eee; }
-    .header-user { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; background: #f5f5f5; font-size: 0.8rem; color: #555; cursor: pointer; }
-    .header-user:hover { background: #eee; }
+    /* ホームタブ */
+    .home-tabs{display:flex;background:#fff;border-bottom:1px solid #ddd;margin-bottom:16px}
+    .home-tab{flex:1;padding:12px;border:none;background:none;font-size:.9rem;cursor:pointer;color:#888;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}
+    .home-tab.active{color:#2196f3;border-bottom-color:#2196f3}
+    .home-section{display:none}.home-section.active{display:block}
 
-    /* ホーム */
-    .deck-list { display: flex; flex-direction: column; gap: 4px; }
-    .deck-card { background: #fff; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: box-shadow 0.2s, transform 0.15s; border: 1px solid #e0e0e0; }
-    .deck-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
-    .deck-card:active { transform: scale(0.99); }
-    .deck-info h3 { font-size: 1rem; font-weight: 600; margin-bottom: 2px; }
-    .deck-meta { font-size: 0.78rem; color: #888; display: flex; gap: 8px; }
-    .deck-rating-dots { display: flex; gap: 6px; font-size: 0.72rem; }
-    .dot-incorrect { color: #e57373; }
-    .dot-correct { color: #81c784; }
-    .dot-understood { color: #64b5f6; }
-    .deck-card-actions { display: flex; gap: 4px; align-items: center; }
-    .deck-action-btn { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 6px; border-radius: 6px; color: #999; }
-    .deck-action-btn:hover { background: #f5f5f5; color: #555; }
-    .deck-arrow { color: #bbb; font-size: 1.2rem; }
+    .deck-list{display:flex;flex-direction:column;gap:4px}
+    .deck-card{background:#fff;border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:box-shadow .2s,transform .15s;border:1px solid #e0e0e0}
+    .deck-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);transform:translateY(-1px)}
+    .deck-card:active{transform:scale(.99)}
+    .deck-info h3{font-size:1rem;font-weight:600;margin-bottom:2px;display:flex;align-items:center;gap:6px}
+    .deck-meta{font-size:.78rem;color:#888;display:flex;gap:8px}
+    .deck-rating-dots{display:flex;gap:6px;font-size:.72rem}
+    .dot-incorrect{color:#e57373}.dot-correct{color:#81c784}.dot-understood{color:#64b5f6}
+    .badge-public{font-size:.65rem;background:#e8f5e9;color:#2e7d32;padding:1px 8px;border-radius:10px;font-weight:400}
+    .deck-card-actions{display:flex;gap:4px;align-items:center}
+    .deck-action-btn{background:none;border:none;cursor:pointer;font-size:1rem;padding:6px;border-radius:6px;color:#999}
+    .deck-action-btn:hover{background:#f5f5f5;color:#555}
+    .deck-arrow{color:#bbb;font-size:1.2rem}
 
-    /* サブデッキ */
-    .subdeck-card { margin-left: 24px; background: #fafafa; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid #eee; transition: all 0.2s; }
-    .subdeck-card:hover { background: #f0f0f0; }
-    .subdeck-card h4 { font-size: 0.9rem; font-weight: 500; }
-    .subdeck-meta { font-size: 0.75rem; color: #999; }
-    .subdeck-add { margin-left: 24px; padding: 8px 16px; font-size: 0.8rem; color: #999; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .subdeck-add:hover { color: #2196f3; }
-    .subdeck-add-form { margin-left: 24px; display: flex; gap: 6px; padding: 6px 0; }
-    .subdeck-add-form input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; }
-    .subdeck-add-form input:focus { outline: none; border-color: #2196f3; }
+    .subdeck-card{margin-left:24px;background:#fafafa;border-radius:10px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border:1px solid #eee;transition:all .2s}
+    .subdeck-card:hover{background:#f0f0f0}
+    .subdeck-card h4{font-size:.9rem;font-weight:500}.subdeck-meta{font-size:.75rem;color:#999}
 
-    .add-deck-section { margin-top: 16px; background: #fff; border-radius: 12px; padding: 16px 20px; border: 2px dashed #ccc; }
-    .add-deck-section h3 { font-size: 0.9rem; color: #666; margin-bottom: 12px; }
-    .add-deck-row { display: flex; gap: 8px; }
-    .add-deck-row input { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; }
-    .add-deck-row input:focus { outline: none; border-color: #2196f3; }
+    .add-deck-section{margin-top:16px;background:#fff;border-radius:12px;padding:16px 20px;border:2px dashed #ccc}
+    .add-deck-section h3{font-size:.9rem;color:#666;margin-bottom:12px}
+    .add-deck-row{display:flex;gap:8px}
+    .add-deck-row input{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;background:#fafafa}
+    .add-deck-row input:focus{outline:none;border-color:#2196f3}
 
-    .btn { padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; font-weight: 500; }
-    .btn:active { transform: scale(0.97); }
-    .btn-blue { background: #2196f3; color: #fff; }
-    .btn-blue:hover { background: #1976d2; }
-    .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
-    .btn-gray { background: #e0e0e0; color: #555; }
-    .btn-red { background: #ef5350; color: #fff; }
-    .btn-red:hover { background: #d32f2f; }
+    .btn{padding:10px 20px;border:none;border-radius:8px;font-size:.95rem;cursor:pointer;transition:all .2s;font-weight:500}
+    .btn:active{transform:scale(.97)}
+    .btn-blue{background:#2196f3;color:#fff}.btn-blue:hover{background:#1976d2}
+    .btn-sm{padding:6px 14px;font-size:.8rem}
+    .btn-gray{background:#e0e0e0;color:#555}
+    .btn-red{background:#ef5350;color:#fff}.btn-red:hover{background:#d32f2f}
+    .btn-green{background:#4caf50;color:#fff}.btn-green:hover{background:#388e3c}
+    .btn-outline{background:none;border:1px solid #ddd;color:#555}.btn-outline:hover{background:#f5f5f5}
 
-    .io-row { display: flex; gap: 8px; margin-top: 12px; justify-content: center; }
-    .io-btn { padding: 8px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 0.85rem; cursor: pointer; color: #555; }
-    .io-btn:hover { background: #f5f5f5; }
+    .io-row{display:flex;gap:8px;margin-top:12px;justify-content:center}
+    .io-btn{padding:8px 16px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;cursor:pointer;color:#555}
+    .io-btn:hover{background:#f5f5f5}
+
+    /* 公開デッキ */
+    .pub-deck-card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:8px}
+    .pub-deck-title{font-size:1rem;font-weight:600;margin-bottom:4px}
+    .pub-deck-meta{font-size:.78rem;color:#888;margin-bottom:4px;display:flex;gap:10px}
+    .pub-deck-desc{font-size:.82rem;color:#666;margin-bottom:10px}
+    .pub-deck-actions{display:flex;gap:8px}
 
     /* 学習 */
-    .study-deck-name { font-size: 0.85rem; color: #888; text-align: center; margin-bottom: 8px; }
-    .study-progress { font-size: 0.85rem; color: #666; text-align: center; margin-bottom: 12px; }
-    .study-progress-bar { height: 4px; background: #e0e0e0; border-radius: 2px; margin-top: 6px; overflow: hidden; }
-    .study-progress-fill { height: 100%; background: #4caf50; border-radius: 2px; transition: width 0.3s; }
+    .study-deck-name{font-size:.85rem;color:#888;text-align:center;margin-bottom:8px;margin-top:16px}
+    .study-progress{font-size:.85rem;color:#666;text-align:center;margin-bottom:12px}
+    .study-progress-bar{height:4px;background:#e0e0e0;border-radius:2px;margin-top:6px;overflow:hidden}
+    .study-progress-fill{height:100%;background:#4caf50;border-radius:2px;transition:width .3s}
+    .study-filters{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px}
+    .study-filter-btn{padding:6px 14px;border:1px solid #ddd;border-radius:20px;background:#fff;font-size:.78rem;cursor:pointer;white-space:nowrap;color:#666;transition:all .2s}
+    .study-filter-btn.active{background:#333;color:#fff;border-color:#333}
+    .study-filter-btn .filter-count{margin-left:4px;opacity:.7}
+    .anki-card{background:#fff;border-radius:12px;min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:32px 24px;text-align:center;font-size:1.15rem;line-height:1.8;cursor:pointer;border:1px solid #e0e0e0;position:relative;user-select:none}
+    .anki-card-label{position:absolute;top:12px;left:16px;font-size:.75rem;color:#aaa;font-weight:600}
+    .anki-card-subdeck{position:absolute;top:12px;right:16px;font-size:.7rem;color:#64b5f6;background:#e3f2fd;padding:2px 8px;border-radius:10px}
+    .anki-card-text{white-space:pre-wrap;word-break:break-word}
+    .anki-divider{width:80%;border:none;border-top:1px solid #e0e0e0;margin:20px 0}
+    .anki-answer-section{color:#1565c0}
+    .show-answer-btn{display:block;width:100%;padding:16px;margin-top:20px;background:#e0e0e0;border:none;border-radius:8px;font-size:1rem;cursor:pointer;color:#555;font-weight:500}
+    .show-answer-btn:hover{background:#d5d5d5}
+    .anki-rating{display:flex;gap:8px;margin-top:20px}
+    .anki-rating-btn{flex:1;padding:14px 8px;border:none;border-radius:8px;font-size:.9rem;cursor:pointer;font-weight:600;transition:all .15s}
+    .anki-rating-btn:active{transform:scale(.96)}
+    .anki-rating-btn.incorrect{background:#ffcdd2;color:#c62828}.anki-rating-btn.incorrect:hover{background:#ef9a9a}
+    .anki-rating-btn.correct{background:#c8e6c9;color:#2e7d32}.anki-rating-btn.correct:hover{background:#a5d6a7}
+    .anki-rating-btn.understood{background:#bbdefb;color:#1565c0}.anki-rating-btn.understood:hover{background:#90caf9}
+    .study-controls{display:flex;gap:8px;margin-top:16px;justify-content:center}
+    .study-ctrl-btn{padding:10px 16px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:.85rem;cursor:pointer;color:#555}
+    .study-ctrl-btn:hover{background:#f5f5f5}
+    .study-ctrl-btn.active{background:#e3f2fd;border-color:#2196f3;color:#1565c0}
+    .autoplay-bar{background:#fff3e0;border-radius:8px;padding:10px 16px;margin-top:12px;display:flex;align-items:center;justify-content:space-between;font-size:.85rem;color:#e65100}
+    .autoplay-bar.hidden{display:none}
+    .autoplay-stop{padding:4px 12px;border:1px solid #e65100;border-radius:6px;background:none;color:#e65100;cursor:pointer;font-size:.8rem}
 
-    /* 復習フィルター */
-    .study-filters { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
-    .study-filter-btn { padding: 6px 14px; border: 1px solid #ddd; border-radius: 20px; background: #fff; font-size: 0.78rem; cursor: pointer; white-space: nowrap; color: #666; transition: all 0.2s; }
-    .study-filter-btn.active { background: #333; color: #fff; border-color: #333; }
-    .study-filter-btn .filter-count { margin-left: 4px; opacity: 0.7; }
+    /* 管理 */
+    .publish-section{background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e0e0e0;margin-bottom:12px}
+    .publish-section h3{font-size:.9rem;color:#555;margin-bottom:10px}
+    .publish-status{font-size:.85rem;color:#888;margin-bottom:10px}
+    .publish-status.published{color:#2e7d32}
+    .manage-subdeck-section{background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e0e0e0;margin-bottom:12px}
+    .manage-subdeck-section h3{font-size:.9rem;color:#555;margin-bottom:10px}
+    .subdeck-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+    .subdeck-chip{background:#e3f2fd;color:#1565c0;padding:4px 12px;border-radius:16px;font-size:.8rem;display:flex;align-items:center;gap:6px}
+    .subdeck-chip-del{cursor:pointer;opacity:.6;font-size:.9rem}.subdeck-chip-del:hover{opacity:1}
+    .manage-form{background:#fff;border-radius:12px;padding:20px;border:1px solid #e0e0e0;margin-bottom:16px}
+    .manage-form h3{font-size:.95rem;margin-bottom:16px;color:#555}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;font-size:.8rem;color:#888;margin-bottom:6px;font-weight:500}
+    .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;background:#fafafa;color:#333}
+    .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:#2196f3;background:#fff}
+    .form-group textarea{min-height:100px;resize:vertical;font-family:inherit;line-height:1.6}
+    .card-list-section{margin-top:20px}.card-list-section h3{font-size:.95rem;color:#555;margin-bottom:12px}
+    .card-item{background:#fff;border:1px solid #e0e0e0;border-radius:10px;padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px}
+    .card-item-content{flex:1;overflow:hidden}
+    .card-item-q{font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+    .card-item-a{font-size:.8rem;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .card-item-tags{display:flex;gap:4px;margin-top:4px}
+    .card-item-tag{font-size:.68rem;padding:1px 8px;border-radius:10px}
+    .tag-subdeck{background:#e3f2fd;color:#1565c0}.tag-incorrect{background:#ffcdd2;color:#c62828}.tag-correct{background:#c8e6c9;color:#2e7d32}.tag-understood{background:#bbdefb;color:#1565c0}
+    .card-item-actions{display:flex;gap:4px}
+    .card-item-btn{border:none;background:none;cursor:pointer;font-size:.95rem;padding:4px 8px;border-radius:6px}
+    .card-item-btn:hover{background:#f0f0f0}
+    .empty-state{text-align:center;padding:40px 20px;color:#aaa}.empty-state-icon{font-size:3rem;margin-bottom:12px}
 
-    .anki-card { background: #fff; border-radius: 12px; min-height: 280px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 32px 24px; text-align: center; font-size: 1.15rem; line-height: 1.8; cursor: pointer; border: 1px solid #e0e0e0; position: relative; user-select: none; }
-    .anki-card-label { position: absolute; top: 12px; left: 16px; font-size: 0.75rem; color: #aaa; font-weight: 600; }
-    .anki-card-subdeck { position: absolute; top: 12px; right: 16px; font-size: 0.7rem; color: #64b5f6; background: #e3f2fd; padding: 2px 8px; border-radius: 10px; }
-    .anki-card-text { white-space: pre-wrap; word-break: break-word; }
-    .anki-divider { width: 80%; border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
-    .anki-answer-section { color: #1565c0; }
+    .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+    .stat-card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;text-align:center}
+    .stat-value{font-size:1.8rem;font-weight:700;color:#2196f3}.stat-label{font-size:.8rem;color:#999;margin-top:4px}
 
-    .show-answer-btn { display: block; width: 100%; padding: 16px; margin-top: 20px; background: #e0e0e0; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; color: #555; font-weight: 500; }
-    .show-answer-btn:hover { background: #d5d5d5; }
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;justify-content:center;align-items:flex-end}
+    .modal-overlay.active{display:flex}
+    .modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:600px;padding:24px 20px;max-height:70vh;overflow-y:auto;animation:slideUp .25s ease}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .modal h3{font-size:1rem;margin-bottom:16px}
+    .modal-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eee;font-size:.9rem}
+    .modal-row:last-child{border-bottom:none}
+    .modal-row input[type="number"]{width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center;font-size:.9rem}
+    .modal-close{display:block;width:100%;padding:14px;margin-top:16px;background:#e0e0e0;border:none;border-radius:8px;font-size:.95rem;cursor:pointer}
+    .modal-row-danger{color:#d32f2f;cursor:pointer}.modal-row-danger:hover{background:#fff5f5}
 
-    /* 評価ボタン - 薄い色 + 常に横並び */
-    .anki-rating { display: flex; gap: 8px; margin-top: 20px; }
-    .anki-rating-btn { flex: 1; padding: 14px 8px; border: none; border-radius: 8px; font-size: 0.9rem; cursor: pointer; font-weight: 600; transition: all 0.15s; }
-    .anki-rating-btn:active { transform: scale(0.96); }
-    .anki-rating-btn.incorrect { background: #ffcdd2; color: #c62828; }
-    .anki-rating-btn.incorrect:hover { background: #ef9a9a; }
-    .anki-rating-btn.correct { background: #c8e6c9; color: #2e7d32; }
-    .anki-rating-btn.correct:hover { background: #a5d6a7; }
-    .anki-rating-btn.understood { background: #bbdefb; color: #1565c0; }
-    .anki-rating-btn.understood:hover { background: #90caf9; }
-    .anki-rating-label { display: block; font-size: 0.7rem; opacity: 0.7; margin-top: 2px; font-weight: 400; }
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:8px;font-size:.85rem;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+    .toast.show{opacity:1}
 
-    .study-controls { display: flex; gap: 8px; margin-top: 16px; justify-content: center; }
-    .study-ctrl-btn { padding: 10px 16px; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 0.85rem; cursor: pointer; color: #555; }
-    .study-ctrl-btn:hover { background: #f5f5f5; }
-    .study-ctrl-btn.active { background: #e3f2fd; border-color: #2196f3; color: #1565c0; }
-
-    .autoplay-bar { background: #fff3e0; border-radius: 8px; padding: 10px 16px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 0.85rem; color: #e65100; }
-    .autoplay-bar.hidden { display: none; }
-    .autoplay-stop { padding: 4px 12px; border: 1px solid #e65100; border-radius: 6px; background: none; color: #e65100; cursor: pointer; font-size: 0.8rem; }
-
-    /* カード管理 */
-    .manage-subdeck-section { background: #fff; border-radius: 12px; padding: 16px 20px; border: 1px solid #e0e0e0; margin-bottom: 12px; }
-    .manage-subdeck-section h3 { font-size: 0.9rem; color: #555; margin-bottom: 10px; }
-    .subdeck-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-    .subdeck-chip { background: #e3f2fd; color: #1565c0; padding: 4px 12px; border-radius: 16px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
-    .subdeck-chip-del { cursor: pointer; opacity: 0.6; font-size: 0.9rem; }
-    .subdeck-chip-del:hover { opacity: 1; }
-
-    .manage-form { background: #fff; border-radius: 12px; padding: 20px; border: 1px solid #e0e0e0; margin-bottom: 16px; }
-    .manage-form h3 { font-size: 0.95rem; margin-bottom: 16px; color: #555; }
-    .form-group { margin-bottom: 14px; }
-    .form-group label { display: block; font-size: 0.8rem; color: #888; margin-bottom: 6px; font-weight: 500; }
-    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; background: #fafafa; color: #333; }
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: #2196f3; background: #fff; }
-    .form-group textarea { min-height: 100px; resize: vertical; font-family: inherit; line-height: 1.6; }
-
-    .card-list-section { margin-top: 20px; }
-    .card-list-section h3 { font-size: 0.95rem; color: #555; margin-bottom: 12px; }
-    .card-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
-    .card-item-content { flex: 1; overflow: hidden; }
-    .card-item-q { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
-    .card-item-a { font-size: 0.8rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .card-item-tags { display: flex; gap: 4px; margin-top: 4px; }
-    .card-item-tag { font-size: 0.68rem; padding: 1px 8px; border-radius: 10px; }
-    .tag-subdeck { background: #e3f2fd; color: #1565c0; }
-    .tag-incorrect { background: #ffcdd2; color: #c62828; }
-    .tag-correct { background: #c8e6c9; color: #2e7d32; }
-    .tag-understood { background: #bbdefb; color: #1565c0; }
-    .card-item-actions { display: flex; gap: 4px; }
-    .card-item-btn { border: none; background: none; cursor: pointer; font-size: 0.95rem; padding: 4px 8px; border-radius: 6px; }
-    .card-item-btn:hover { background: #f0f0f0; }
-    .empty-state { text-align: center; padding: 40px 20px; color: #aaa; }
-    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
-
-    /* 統計 */
-    .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-    .stat-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; text-align: center; }
-    .stat-value { font-size: 1.8rem; font-weight: 700; color: #2196f3; }
-    .stat-label { font-size: 0.8rem; color: #999; margin-top: 4px; }
-
-    /* モーダル */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: flex-end; }
-    .modal-overlay.active { display: flex; }
-    .modal { background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-width: 600px; padding: 24px 20px; max-height: 70vh; overflow-y: auto; animation: slideUp 0.25s ease; }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    .modal h3 { font-size: 1rem; margin-bottom: 16px; }
-    .modal-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-    .modal-row:last-child { border-bottom: none; }
-    .modal-row input[type="number"] { width: 60px; padding: 6px; border: 1px solid #ddd; border-radius: 6px; text-align: center; font-size: 0.9rem; }
-    .modal-close { display: block; width: 100%; padding: 14px; margin-top: 16px; background: #e0e0e0; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; }
-    .modal-row-danger { color: #d32f2f; cursor: pointer; }
-    .modal-row-danger:hover { background: #fff5f5; }
-
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 8px; font-size: 0.85rem; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .toast.show { opacity: 1; }
-
-    @media (max-width: 600px) {
-      .anki-card { min-height: 220px; padding: 24px 16px; font-size: 1rem; }
-    }
+    @media(max-width:600px){.anki-card{min-height:220px;padding:24px 16px;font-size:1rem}}
   </style>
 </head>
 <body>
+  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:.9rem">読み込み中...</div></div>
 
-  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:0.9rem">読み込み中...</div></div>
+  <div class="page" id="page-login"><div class="login-page">
+    <div class="login-logo">&#x1f4da;</div><div class="login-title">AnkiMaster</div>
+    <div class="login-sub">資格試験のためのフラッシュカード学習</div>
+    <button class="login-btn login-btn-google" id="google-login-btn">
+      <svg class="login-google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Googleでログイン</button>
+    <button class="login-btn login-btn-guest" id="guest-login-btn">&#x1f464; お試しで使う（ゲスト）</button>
+  </div></div>
 
-  <!-- ログイン -->
-  <div class="page" id="page-login">
-    <div class="login-page">
-      <div class="login-logo">&#x1f4da;</div>
-      <div class="login-title">AnkiMaster</div>
-      <div class="login-sub">資格試験のためのフラッシュカード学習</div>
-      <button class="login-btn login-btn-google" id="google-login-btn">
-        <svg class="login-google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-        Googleでログイン
-      </button>
-      <button class="login-btn login-btn-guest" id="guest-login-btn">&#x1f464; お試しで使う（ゲスト）</button>
-    </div>
-  </div>
-
-  <!-- ヘッダー -->
   <div class="app-header" id="app-header" style="display:none">
     <button class="header-back" id="back-btn">&#8592;</button>
     <h1 id="header-title">デッキ</h1>
@@ -224,18 +191,25 @@
 
   <!-- ホーム -->
   <div class="page" id="page-home">
-    <div class="deck-list" id="deck-list"></div>
-    <div class="add-deck-section">
-      <h3>+ 新しいデッキを追加</h3>
-      <div class="add-deck-row">
-        <input type="text" id="new-deck-input" placeholder="デッキ名を入力">
-        <button class="btn btn-blue" id="add-deck-btn">追加</button>
+    <div class="home-tabs">
+      <button class="home-tab active" data-tab="my" id="tab-my">マイデッキ</button>
+      <button class="home-tab" data-tab="public" id="tab-public">公開デッキ</button>
+    </div>
+    <div class="home-section active" id="section-my">
+      <div class="deck-list" id="deck-list"></div>
+      <div class="add-deck-section">
+        <h3>+ 新しいデッキを追加</h3>
+        <div class="add-deck-row"><input type="text" id="new-deck-input" placeholder="デッキ名を入力"><button class="btn btn-blue" id="add-deck-btn">追加</button></div>
+      </div>
+      <div class="io-row">
+        <button class="io-btn" id="export-btn">&#x1f4e4; エクスポート</button>
+        <button class="io-btn" id="import-btn">&#x1f4e5; インポート</button>
+        <input type="file" id="import-file" accept=".json" style="display:none">
       </div>
     </div>
-    <div class="io-row">
-      <button class="io-btn" id="export-btn">&#x1f4e4; エクスポート</button>
-      <button class="io-btn" id="import-btn">&#x1f4e5; インポート</button>
-      <input type="file" id="import-file" accept=".json" style="display:none">
+    <div class="home-section" id="section-public">
+      <div id="public-deck-list"></div>
+      <div class="empty-state" id="public-loading" style="padding:20px"><div class="spinner" style="margin:0 auto 12px"></div>読み込み中...</div>
     </div>
   </div>
 
@@ -266,27 +240,29 @@
 
   <!-- カード管理 -->
   <div class="page" id="page-manage">
-    <div class="manage-subdeck-section" id="manage-subdeck-section">
+    <div class="publish-section" id="publish-section">
+      <h3>&#x1f4e4; 公開設定</h3>
+      <div class="publish-status" id="publish-status">このデッキは公開されていません</div>
+      <div id="publish-desc-group" class="form-group" style="margin-bottom:10px">
+        <label>説明（任意）</label>
+        <input type="text" id="publish-desc" placeholder="デッキの説明を入力">
+      </div>
+      <div style="display:flex;gap:8px" id="publish-buttons">
+        <button class="btn btn-green btn-sm" id="publish-btn">公開する</button>
+      </div>
+    </div>
+    <div class="manage-subdeck-section">
       <h3>サブデッキ</h3>
       <div class="subdeck-chips" id="subdeck-chips"></div>
-      <div class="add-deck-row">
-        <input type="text" id="new-subdeck-input" placeholder="サブデッキ名">
-        <button class="btn btn-blue btn-sm" id="add-subdeck-btn">追加</button>
-      </div>
+      <div class="add-deck-row"><input type="text" id="new-subdeck-input" placeholder="サブデッキ名"><button class="btn btn-blue btn-sm" id="add-subdeck-btn">追加</button></div>
     </div>
     <div class="manage-form">
       <h3 id="manage-form-title">カードを追加</h3>
       <form id="card-form">
-        <div class="form-group" id="subdeck-select-group" style="display:none">
-          <label>サブデッキ</label>
-          <select id="card-subdeck-select"><option value="">なし（直下）</option></select>
-        </div>
+        <div class="form-group" id="subdeck-select-group" style="display:none"><label>サブデッキ</label><select id="card-subdeck-select"><option value="">なし（直下）</option></select></div>
         <div class="form-group"><label>問題（表面）</label><textarea id="card-question" placeholder="問題を入力"></textarea></div>
         <div class="form-group"><label>答え（裏面）</label><textarea id="card-answer" placeholder="答えを入力"></textarea></div>
-        <div style="display:flex;gap:8px">
-          <button type="submit" class="btn btn-blue" style="flex:1" id="card-submit-btn">追加</button>
-          <button type="button" class="btn btn-gray" id="card-cancel-btn" style="display:none">キャンセル</button>
-        </div>
+        <div style="display:flex;gap:8px"><button type="submit" class="btn btn-blue" style="flex:1" id="card-submit-btn">追加</button><button type="button" class="btn btn-gray" id="card-cancel-btn" style="display:none">キャンセル</button></div>
       </form>
     </div>
     <div class="card-list-section"><h3 id="manage-card-count">カード (0枚)</h3><div id="manage-card-list"></div></div>
@@ -305,510 +281,321 @@
     <button class="btn btn-red" style="width:100%" id="reset-stats-btn">統計をリセット</button>
   </div>
 
-  <!-- 設定モーダル -->
-  <div class="modal-overlay" id="settings-modal">
-    <div class="modal">
-      <h3>&#x2699; 設定</h3>
-      <div class="modal-row"><span>自動再生: 問題表示（秒）</span><input type="number" id="cfg-q-delay" value="3" min="1" max="30"></div>
-      <div class="modal-row"><span>自動再生: 答え表示（秒）</span><input type="number" id="cfg-a-delay" value="3" min="1" max="30"></div>
-      <div class="modal-row modal-row-danger" id="logout-row">&#x1f6aa; ログアウト</div>
-      <button class="modal-close" id="settings-close">閉じる</button>
-    </div>
-  </div>
-
+  <div class="modal-overlay" id="settings-modal"><div class="modal">
+    <h3>&#x2699; 設定</h3>
+    <div class="modal-row"><span>自動再生: 問題表示（秒）</span><input type="number" id="cfg-q-delay" value="3" min="1" max="30"></div>
+    <div class="modal-row"><span>自動再生: 答え表示（秒）</span><input type="number" id="cfg-a-delay" value="3" min="1" max="30"></div>
+    <div class="modal-row modal-row-danger" id="logout-row">&#x1f6aa; ログアウト</div>
+    <button class="modal-close" id="settings-close">閉じる</button>
+  </div></div>
   <div class="toast" id="toast"></div>
 
-  <script>
-    /* ========== Firebase ========== */
-    firebase.initializeApp({
-      apiKey: "AIzaSyCFliHkmMAxap7386JJZb81o3dbI5uJFGU",
-      authDomain: "ankimaster-395d5.firebaseapp.com",
-      projectId: "ankimaster-395d5",
-      storageBucket: "ankimaster-395d5.firebasestorage.app",
-      messagingSenderId: "679225068510",
-      appId: "1:679225068510:web:8acae35eb5ee7537d26b4f",
-      measurementId: "G-PLHLN3NH45"
-    });
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    db.enablePersistence().catch(() => {});
+<script>
+/* ========== Firebase ========== */
+firebase.initializeApp({apiKey:"AIzaSyCFliHkmMAxap7386JJZb81o3dbI5uJFGU",authDomain:"ankimaster-395d5.firebaseapp.com",projectId:"ankimaster-395d5",storageBucket:"ankimaster-395d5.firebasestorage.app",messagingSenderId:"679225068510",appId:"1:679225068510:web:8acae35eb5ee7537d26b4f",measurementId:"G-PLHLN3NH45"});
+const auth=firebase.auth(),db=firebase.firestore();
+db.enablePersistence().catch(()=>{});
 
-    /* ========== State ========== */
-    let currentUser = null, isGuest = false;
-    let cards = [], decks = [], stats = { reviews: 0, incorrect: 0, correct: 0, understood: 0 };
-    let currentDeck = null, currentSubdeck = null, studyCards = [], studyIndex = 0, answerShown = false;
-    let studyFilter = 'all';
-    let isPlaying = false, playTimer = null, editingId = null;
+/* ========== State ========== */
+let currentUser=null,isGuest=false;
+let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
+let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
+let isPlaying=false,playTimer=null,editingId=null;
+let isPublicStudy=false,activeHomeTab='my';
 
-    /* ========== LocalStorage ========== */
-    const LS = {
-      load(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
-      save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
-    };
+/* ========== LS ========== */
+const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},save(k,v){localStorage.setItem(k,JSON.stringify(v))}};
 
-    /* ========== Data Layer ========== */
-    function userDoc() { return db.collection('users').doc(currentUser.uid); }
-    function cardsCol() { return userDoc().collection('cards'); }
+/* ========== Data ========== */
+function userDoc(){return db.collection('users').doc(currentUser.uid)}
+function cardsCol(){return userDoc().collection('cards')}
+function migrateDecks(r){if(!r||!r.length)return[{name:'デフォルト',subdecks:[],publishedId:null}];if(typeof r[0]==='string')return r.map(n=>({name:n,subdecks:[],publishedId:null}));return r.map(d=>({name:d.name,subdecks:d.subdecks||[],publishedId:d.publishedId||null}))}
+function migrateStats(r){const s=r||{};return{reviews:s.reviews||0,incorrect:s.incorrect||s.hard||0,correct:s.correct||s.good||0,understood:s.understood||s.easy||0}}
 
-    function migrateDecks(raw) {
-      if (!raw || raw.length === 0) return [{ name: 'デフォルト', subdecks: [] }];
-      if (typeof raw[0] === 'string') return raw.map(n => ({ name: n, subdecks: [] }));
-      return raw.map(d => ({ name: d.name, subdecks: d.subdecks || [] }));
+async function loadData(){
+  if(isGuest){decks=migrateDecks(LS.load('fc_decks',null));cards=LS.load('fc_cards',[]);stats=migrateStats(LS.load('fc_stats',null));if(!cards.length)seedSample();return}
+  try{
+    const doc=await userDoc().get();
+    if(doc.exists){const d=doc.data();decks=migrateDecks(d.decks);stats=migrateStats(d.stats)}
+    else{decks=[{name:'デフォルト',subdecks:[],publishedId:null}];stats={reviews:0,incorrect:0,correct:0,understood:0};await userDoc().set({decks,stats})}
+    const snap=await cardsCol().orderBy('created').get();
+    cards=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!cards.length)await seedFS();
+  }catch(e){console.error(e);showToast('読み込み失敗')}
+}
+async function saveDecks(){if(isGuest){LS.save('fc_decks',decks);return}try{await userDoc().update({decks})}catch(e){console.error(e)}}
+async function saveStats(){if(isGuest){LS.save('fc_stats',stats);return}try{await userDoc().update({stats})}catch(e){console.error(e)}}
+async function addCard(c){if(isGuest){c.id=Date.now().toString()+Math.random();cards.push(c);LS.save('fc_cards',cards);return}try{const r=await cardsCol().add(c);cards.push({id:r.id,...c})}catch(e){console.error(e);showToast('保存失敗')}}
+async function updateCard(id,data){const i=cards.findIndex(c=>c.id===id);if(i===-1)return;cards[i]={...cards[i],...data};if(isGuest){LS.save('fc_cards',cards);return}try{await cardsCol().doc(id).update(data)}catch(e){console.error(e)}}
+async function removeCard(id){cards=cards.filter(c=>c.id!==id);if(isGuest){LS.save('fc_cards',cards);return}try{await cardsCol().doc(id).delete()}catch(e){console.error(e)}}
+
+function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'2',question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'3',question:'尊属殺重罰規定違憲判決のポイントは？',answer:'刑法200条は法の下の平等（憲法14条1項）に違反し無効。',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];LS.save('fc_cards',cards)}
+async function seedFS(){const ss=[{question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];for(const s of ss){const r=await cardsCol().add(s);cards.push({id:r.id,...s})}}
+
+/* ========== Auth ========== */
+document.getElementById('google-login-btn').addEventListener('click',async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('ログイン失敗')}});
+document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
+document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
+auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login')}});
+async function initApp(){document.getElementById('loading').classList.remove('hidden');await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';document.getElementById('header-user-name').textContent=isGuest?'ゲスト':(currentUser?.displayName||currentUser?.email||'ユーザー');navigateTo('home')}
+
+/* ========== Nav ========== */
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
+function navigateTo(page,data){
+  stopAutoPlay();isPublicStudy=false;
+  const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
+  switch(page){
+    case'home':showPage('home');back.classList.remove('visible');title.textContent='デッキ';renderDeckList();setHomeTab(activeHomeTab);break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter='all';startStudy();break;
+    case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';resetForm();renderManageSubdecks();renderManageList();renderPublishSection();break;
+    case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
+  }
+}
+document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
+document.getElementById('stats-btn').addEventListener('click',()=>navigateTo('stats'));
+
+/* ========== Home Tabs ========== */
+function setHomeTab(tab){
+  activeHomeTab=tab;
+  document.querySelectorAll('.home-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.querySelectorAll('.home-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(tab==='my'?'section-my':'section-public').classList.add('active');
+  if(tab==='public')loadPublicDecks();
+}
+document.querySelectorAll('.home-tab').forEach(t=>t.addEventListener('click',()=>setHomeTab(t.dataset.tab)));
+
+/* ========== Helpers ========== */
+function getDeck(n){return decks.find(d=>d.name===n)}
+function deckCards(n){return cards.filter(c=>c.deck===n)}
+function subdeckCards(n,s){return cards.filter(c=>c.deck===n&&c.subdeck===s)}
+function countR(a,r){return a.filter(c=>c.lastRating===r).length}
+function countU(a){return a.filter(c=>!c.lastRating).length}
+
+/* ========== Home: My Decks ========== */
+function renderDeckList(){
+  const el=document.getElementById('deck-list');let html='';
+  for(const d of decks){
+    const dc=deckCards(d.name),inc=countR(dc,'incorrect'),cor=countR(dc,'correct'),und=countR(dc,'understood');
+    html+=`<div class="deck-card" data-deck="${esc(d.name)}"><div class="deck-info"><h3>${esc(d.name)}${d.publishedId?'<span class="badge-public">公開中</span>':''}</h3><div class="deck-meta"><span>${dc.length}枚</span></div><div class="deck-rating-dots">${inc?`<span class="dot-incorrect">&#x2716; ${inc}</span>`:''}${cor?`<span class="dot-correct">&#x2714; ${cor}</span>`:''}${und?`<span class="dot-understood">&#x2605; ${und}</span>`:''}</div></div><div class="deck-card-actions"><button class="deck-action-btn" data-act="rename" data-deck="${esc(d.name)}" title="名前変更">&#x270f;</button><button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button>${d.name!=='デフォルト'?`<button class="deck-action-btn" data-act="delete" data-deck="${esc(d.name)}" title="削除">&#x1f5d1;</button>`:''}<span class="deck-arrow">&#x276f;</span></div></div>`;
+    for(const sd of d.subdecks){const sc=subdeckCards(d.name,sd);html+=`<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><div><h4>${esc(sd)}</h4><div class="subdeck-meta">${sc.length}枚</div></div><span class="deck-arrow">&#x276f;</span></div>`}
+  }
+  el.innerHTML=html;
+  el.querySelectorAll('.deck-card').forEach(c=>{c.addEventListener('click',e=>{const t=e.target.closest('[data-act]'),dn=c.dataset.deck;if(t){e.stopPropagation();if(t.dataset.act==='manage')navigateTo('manage',dn);if(t.dataset.act==='delete')deleteDeckAction(dn);if(t.dataset.act==='rename')renameDeckAction(dn)}else navigateTo('study',{deck:dn})})});
+  el.querySelectorAll('.subdeck-card').forEach(c=>{c.addEventListener('click',()=>navigateTo('study',{deck:c.dataset.deck,subdeck:c.dataset.subdeck}))});
+}
+
+document.getElementById('add-deck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-deck-input'),n=i.value.trim();if(n&&!getDeck(n)){decks.push({name:n,subdecks:[],publishedId:null});await saveDecks();i.value='';renderDeckList();showToast(`「${n}」を追加`)}});
+document.getElementById('new-deck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-deck-btn').click()}});
+
+async function deleteDeckAction(name){
+  if(!confirm(`「${name}」を削除？\nカードはデフォルトに移動。`))return;
+  for(const c of cards){if(c.deck===name){c.deck='デフォルト';c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({deck:'デフォルト',subdeck:''})}}
+  if(isGuest)LS.save('fc_cards',cards);
+  decks=decks.filter(d=>d.name!==name);await saveDecks();renderDeckList();
+}
+
+async function renameDeckAction(oldName){
+  const newName=prompt('新しいデッキ名を入力:',oldName);
+  if(!newName||newName.trim()===''||newName.trim()===oldName)return;
+  const nn=newName.trim();
+  if(getDeck(nn)){showToast('同じ名前のデッキがあります');return}
+  const deck=getDeck(oldName);if(!deck)return;
+  deck.name=nn;
+  for(const c of cards){if(c.deck===oldName){c.deck=nn;if(!isGuest)await cardsCol().doc(c.id).update({deck:nn})}}
+  if(isGuest)LS.save('fc_cards',cards);
+  await saveDecks();renderDeckList();showToast(`「${nn}」に変更しました`);
+}
+
+/* ========== Home: Public Decks ========== */
+async function loadPublicDecks(){
+  const el=document.getElementById('public-deck-list'),ld=document.getElementById('public-loading');
+  ld.style.display='block';el.innerHTML='';
+  try{
+    const snap=await db.collection('publicDecks').orderBy('updatedAt','desc').get();
+    ld.style.display='none';
+    if(snap.empty){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4da;</div><p>公開デッキはまだありません</p></div>';return}
+    el.innerHTML=snap.docs.map(doc=>{const d=doc.data();return`<div class="pub-deck-card" data-id="${doc.id}"><div class="pub-deck-title">${esc(d.title)}</div><div class="pub-deck-meta"><span>${d.cardCount||0}枚</span><span>by ${esc(d.authorName||'匿名')}</span></div>${d.description?`<div class="pub-deck-desc">${esc(d.description)}</div>`:''}<div class="pub-deck-actions"><button class="btn btn-blue btn-sm" data-act="study" data-id="${doc.id}">学習する</button>${(!isGuest&&currentUser)?`<button class="btn btn-outline btn-sm" data-act="copy" data-id="${doc.id}">コピーする</button>`:''}</div></div>`}).join('');
+    el.querySelectorAll('[data-act="study"]').forEach(b=>b.addEventListener('click',()=>studyPublicDeck(b.dataset.id)));
+    el.querySelectorAll('[data-act="copy"]').forEach(b=>b.addEventListener('click',()=>copyPublicDeck(b.dataset.id)));
+  }catch(e){ld.style.display='none';console.error(e);el.innerHTML='<div class="empty-state"><p>読み込みに失敗しました</p></div>'}
+}
+
+async function studyPublicDeck(id){
+  document.getElementById('loading').classList.remove('hidden');
+  try{
+    const doc=await db.collection('publicDecks').doc(id).get();
+    const snap=await db.collection('publicDecks').doc(id).collection('cards').orderBy('order').get();
+    const pubCards=snap.docs.map((d,i)=>({question:d.data().question,answer:d.data().answer,subdeck:'',order:i}));
+    document.getElementById('loading').classList.add('hidden');
+    if(!pubCards.length){showToast('カードがありません');return}
+    activeHomeTab='public';
+    navigateTo('public-study',{title:doc.data().title,cards:pubCards});
+  }catch(e){document.getElementById('loading').classList.add('hidden');console.error(e);showToast('読み込み失敗')}
+}
+
+async function copyPublicDeck(id){
+  if(isGuest||!currentUser){showToast('コピーするにはログインしてください');return}
+  if(!confirm('このデッキをマイデッキにコピーしますか？'))return;
+  document.getElementById('loading').classList.remove('hidden');
+  try{
+    const doc=await db.collection('publicDecks').doc(id).get();
+    const d=doc.data();
+    const deckName=d.title;
+    let finalName=deckName;let cnt=1;while(getDeck(finalName)){finalName=`${deckName} (${cnt++})`}
+    decks.push({name:finalName,subdecks:[],publishedId:null});await saveDecks();
+    const snap=await db.collection('publicDecks').doc(id).collection('cards').orderBy('order').get();
+    for(const c of snap.docs){const cd=c.data();await addCard({question:cd.question,answer:cd.answer,deck:finalName,subdeck:'',lastRating:null,created:new Date().toISOString()})}
+    document.getElementById('loading').classList.add('hidden');
+    showToast(`「${finalName}」にコピーしました`);setHomeTab('my');renderDeckList();
+  }catch(e){document.getElementById('loading').classList.add('hidden');console.error(e);showToast('コピー失敗')}
+}
+
+/* ========== Study ========== */
+function getStudyPool(){
+  let pool;if(currentSubdeck)pool=subdeckCards(currentDeck,currentSubdeck);else pool=deckCards(currentDeck);
+  if(studyFilter==='all')return pool;if(studyFilter==='unrated')return pool.filter(c=>!c.lastRating);return pool.filter(c=>c.lastRating===studyFilter);
+}
+function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()}
+function renderStudyFilters(){
+  if(isPublicStudy){document.getElementById('study-filters').innerHTML='';return}
+  const pool=currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
+  const fs=[{key:'all',label:'全て',count:pool.length},{key:'incorrect',label:'不正解',count:countR(pool,'incorrect')},{key:'correct',label:'正解',count:countR(pool,'correct')},{key:'understood',label:'理解した',count:countR(pool,'understood')},{key:'unrated',label:'未学習',count:countU(pool)}];
+  document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
+  document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
+}
+function renderStudyCard(){
+  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),sb=document.getElementById('show-answer-btn'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck');
+  document.getElementById('study-deck-name').textContent=isPublicStudy?'':currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;
+  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';sb.style.display='none';rt.style.display='none';sd.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
+  const card=studyCards[studyIndex];
+  document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${studyCards.length}`;
+  document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
+  qE.textContent=card.question;aE.textContent=card.answer;
+  if(card.subdeck){sd.textContent=card.subdeck;sd.style.display='block'}else sd.style.display='none';
+  if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';sb.style.display='none';rt.style.display='flex'}
+  else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';sb.style.display='block';rt.style.display='none'}
+}
+
+document.getElementById('show-answer-btn').addEventListener('click',()=>{answerShown=true;renderStudyCard()});
+document.getElementById('anki-card').addEventListener('click',()=>{if(!answerShown&&studyCards.length>0){answerShown=true;renderStudyCard()}});
+
+document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
+  const r=b.dataset.rating;
+  if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
+  const card=studyCards[studyIndex];stats.reviews++;stats[r]++;
+  await updateCard(card.id,{lastRating:r});await saveStats();
+  studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
+  studyCards=getStudyPool();if(studyIndex>=studyCards.length)studyIndex=0;
+  renderStudyFilters();renderStudyCard();
+})});
+
+document.getElementById('shuffle-btn').addEventListener('click',()=>{for(let i=studyCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[studyCards[i],studyCards[j]]=[studyCards[j],studyCards[i]]}studyIndex=0;answerShown=false;renderStudyCard();showToast('シャッフルしました')});
+document.getElementById('autoplay-btn').addEventListener('click',()=>{if(!studyCards.length)return;isPlaying=true;document.getElementById('autoplay-bar').classList.remove('hidden');document.getElementById('autoplay-btn').classList.add('active');autoPlayNext()});
+document.getElementById('autoplay-stop').addEventListener('click',stopAutoPlay);
+function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);document.getElementById('autoplay-bar').classList.add('hidden');document.getElementById('autoplay-btn').classList.remove('active')}
+function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();document.getElementById('autoplay-status').textContent='問題を表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();document.getElementById('autoplay-status').textContent='答えを表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
+
+/* ========== Manage ========== */
+function renderPublishSection(){
+  if(isGuest||!currentUser){document.getElementById('publish-section').style.display='none';return}
+  document.getElementById('publish-section').style.display='block';
+  const deck=getDeck(currentDeck);if(!deck)return;
+  const st=document.getElementById('publish-status'),btns=document.getElementById('publish-buttons');
+  if(deck.publishedId){
+    st.className='publish-status published';st.textContent='&#x2705; このデッキは公開中です';
+    btns.innerHTML='<button class="btn btn-green btn-sm" id="publish-update-btn">更新する</button><button class="btn btn-red btn-sm" id="unpublish-btn">非公開にする</button>';
+    document.getElementById('publish-update-btn').addEventListener('click',()=>publishDeck(true));
+    document.getElementById('unpublish-btn').addEventListener('click',unpublishDeck);
+  }else{
+    st.className='publish-status';st.textContent='このデッキは公開されていません';
+    btns.innerHTML='<button class="btn btn-green btn-sm" id="publish-do-btn">公開する</button>';
+    document.getElementById('publish-do-btn').addEventListener('click',()=>publishDeck(false));
+  }
+}
+
+async function publishDeck(isUpdate){
+  const deck=getDeck(currentDeck);if(!deck)return;
+  const dc=deckCards(currentDeck);
+  if(!dc.length){showToast('カードがないデッキは公開できません');return}
+  const desc=document.getElementById('publish-desc').value.trim();
+  const data={title:currentDeck,description:desc,authorId:currentUser.uid,authorName:currentUser.displayName||'匿名',cardCount:dc.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{
+    let docId;
+    if(isUpdate&&deck.publishedId){
+      docId=deck.publishedId;
+      await db.collection('publicDecks').doc(docId).update(data);
+      // 既存カード削除
+      const old=await db.collection('publicDecks').doc(docId).collection('cards').get();
+      const batch1=db.batch();old.forEach(d=>batch1.delete(d.ref));await batch1.commit();
+    }else{
+      data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      const ref=await db.collection('publicDecks').add(data);docId=ref.id;
+      deck.publishedId=docId;await saveDecks();
     }
+    // カード追加（バッチ）
+    let batch=db.batch(),cnt=0;
+    dc.forEach((c,i)=>{const ref=db.collection('publicDecks').doc(docId).collection('cards').doc();batch.set(ref,{question:c.question,answer:c.answer,order:i});cnt++;if(cnt>=400){batch.commit();batch=db.batch();cnt=0}});
+    if(cnt>0)await batch.commit();
+    showToast(isUpdate?'公開デッキを更新しました':'デッキを公開しました');renderPublishSection();renderDeckList();
+  }catch(e){console.error(e);showToast('公開に失敗しました')}
+}
 
-    function migrateStats(raw) {
-      const s = raw || {};
-      return {
-        reviews: s.reviews || 0,
-        incorrect: s.incorrect || s.hard || 0,
-        correct: s.correct || s.good || 0,
-        understood: s.understood || s.easy || 0
-      };
-    }
+async function unpublishDeck(){
+  if(!confirm('このデッキを非公開にしますか？'))return;
+  const deck=getDeck(currentDeck);if(!deck||!deck.publishedId)return;
+  try{
+    const old=await db.collection('publicDecks').doc(deck.publishedId).collection('cards').get();
+    const batch=db.batch();old.forEach(d=>batch.delete(d.ref));await batch.commit();
+    await db.collection('publicDecks').doc(deck.publishedId).delete();
+    deck.publishedId=null;await saveDecks();
+    showToast('非公開にしました');renderPublishSection();renderDeckList();
+  }catch(e){console.error(e);showToast('失敗しました')}
+}
 
-    async function loadData() {
-      if (isGuest) {
-        decks = migrateDecks(LS.load('fc_decks', null));
-        cards = LS.load('fc_cards', []);
-        stats = migrateStats(LS.load('fc_stats', null));
-        if (cards.length === 0) seedSampleData();
-        return;
-      }
-      try {
-        const doc = await userDoc().get();
-        if (doc.exists) {
-          const d = doc.data();
-          decks = migrateDecks(d.decks);
-          stats = migrateStats(d.stats);
-        } else {
-          decks = [{ name: 'デフォルト', subdecks: [] }];
-          stats = { reviews: 0, incorrect: 0, correct: 0, understood: 0 };
-          await userDoc().set({ decks, stats });
-        }
-        const snap = await cardsCol().orderBy('created').get();
-        cards = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (cards.length === 0) await seedFirestore();
-      } catch (e) { console.error(e); showToast('読み込みに失敗'); }
-    }
+function renderManageSubdecks(){
+  const deck=getDeck(currentDeck);if(!deck)return;
+  const chips=document.getElementById('subdeck-chips');
+  chips.innerHTML=deck.subdecks.map(sd=>`<div class="subdeck-chip">${esc(sd)}<span class="subdeck-chip-del" data-sd="${esc(sd)}">&#x2715;</span></div>`).join('');
+  chips.querySelectorAll('.subdeck-chip-del').forEach(el=>{el.addEventListener('click',async()=>{const sd=el.dataset.sd;if(!confirm(`サブデッキ「${sd}」を削除？`))return;for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd){c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({subdeck:''})}}if(isGuest)LS.save('fc_cards',cards);deck.subdecks=deck.subdecks.filter(s=>s!==sd);await saveDecks();renderManageSubdecks();renderManageList()})});
+  const sel=document.getElementById('card-subdeck-select');
+  sel.innerHTML='<option value="">なし（直下）</option>'+deck.subdecks.map(sd=>`<option value="${esc(sd)}">${esc(sd)}</option>`).join('');
+  document.getElementById('subdeck-select-group').style.display=deck.subdecks.length?'block':'none';
+}
+document.getElementById('add-subdeck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-subdeck-input'),n=i.value.trim(),dk=getDeck(currentDeck);if(n&&dk&&!dk.subdecks.includes(n)){dk.subdecks.push(n);await saveDecks();i.value='';renderManageSubdecks();showToast(`サブデッキ「${n}」を追加`)}});
+document.getElementById('new-subdeck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-subdeck-btn').click()}});
 
-    async function saveDecks() {
-      if (isGuest) { LS.save('fc_decks', decks); return; }
-      try { await userDoc().update({ decks }); } catch (e) { console.error(e); }
-    }
-    async function saveStats() {
-      if (isGuest) { LS.save('fc_stats', stats); return; }
-      try { await userDoc().update({ stats }); } catch (e) { console.error(e); }
-    }
+function renderManageList(){
+  const dc=deckCards(currentDeck);document.getElementById('manage-card-count').textContent=`カード (${dc.length}枚)`;
+  const el=document.getElementById('manage-card-list');
+  if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';return}
+  el.innerHTML=dc.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.lastRating==='incorrect')tags+='<span class="card-item-tag tag-incorrect">不正解</span>';if(c.lastRating==='correct')tags+='<span class="card-item-tag tag-correct">正解</span>';if(c.lastRating==='understood')tags+='<span class="card-item-tag tag-understood">理解した</span>';return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
+  el.querySelectorAll('.card-item-btn').forEach(b=>{b.addEventListener('click',()=>{if(b.dataset.act==='edit')editCardAction(b.dataset.id);if(b.dataset.act==='del')deleteCardAction(b.dataset.id)})});
+}
 
-    async function addCard(card) {
-      if (isGuest) { card.id = Date.now().toString() + Math.random(); cards.push(card); LS.save('fc_cards', cards); return; }
-      try { const ref = await cardsCol().add(card); cards.push({ id: ref.id, ...card }); } catch (e) { console.error(e); showToast('保存失敗'); }
-    }
-    async function updateCard(id, data) {
-      const i = cards.findIndex(c => c.id === id);
-      if (i === -1) return;
-      cards[i] = { ...cards[i], ...data };
-      if (isGuest) { LS.save('fc_cards', cards); return; }
-      try { await cardsCol().doc(id).update(data); } catch (e) { console.error(e); }
-    }
-    async function removeCard(id) {
-      cards = cards.filter(c => c.id !== id);
-      if (isGuest) { LS.save('fc_cards', cards); return; }
-      try { await cardsCol().doc(id).delete(); } catch (e) { console.error(e); }
-    }
+document.getElementById('card-form').addEventListener('submit',async e=>{e.preventDefault();const q=document.getElementById('card-question').value.trim(),a=document.getElementById('card-answer').value.trim(),sd=document.getElementById('card-subdeck-select').value;if(!q||!a)return;if(editingId){await updateCard(editingId,{question:q,answer:a,subdeck:sd});resetForm();showToast('更新しました')}else{await addCard({question:q,answer:a,deck:currentDeck,subdeck:sd,lastRating:null,created:new Date().toISOString()});showToast('追加しました')}document.getElementById('card-question').value='';document.getElementById('card-answer').value='';renderManageList()});
+function editCardAction(id){const c=cards.find(x=>x.id===id);if(!c)return;editingId=id;document.getElementById('card-question').value=c.question;document.getElementById('card-answer').value=c.answer;document.getElementById('card-subdeck-select').value=c.subdeck||'';document.getElementById('manage-form-title').textContent='カードを編集';document.getElementById('card-submit-btn').textContent='更新';document.getElementById('card-cancel-btn').style.display='block';document.getElementById('card-question').scrollIntoView({behavior:'smooth'})}
+async function deleteCardAction(id){if(!confirm('削除しますか？'))return;await removeCard(id);renderManageList();showToast('削除しました')}
+function resetForm(){editingId=null;document.getElementById('card-question').value='';document.getElementById('card-answer').value='';document.getElementById('manage-form-title').textContent='カードを追加';document.getElementById('card-submit-btn').textContent='追加';document.getElementById('card-cancel-btn').style.display='none'}
+document.getElementById('card-cancel-btn').addEventListener('click',resetForm);
 
-    function seedSampleData() {
-      cards = [
-        { id: '1', question: '民法第1条の3つの基本原則は？', answer: '①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
-        { id: '2', question: '憲法第9条の内容は？', answer: '第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
-        { id: '3', question: '尊属殺重罰規定違憲判決のポイントは？', answer: '刑法200条は法の下の平等（憲法14条1項）に違反し無効。', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() }
-      ];
-      LS.save('fc_cards', cards);
-    }
-    async function seedFirestore() {
-      const samples = [
-        { question: '民法第1条の3つの基本原則は？', answer: '①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
-        { question: '憲法第9条の内容は？', answer: '第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() },
-        { question: '尊属殺重罰規定違憲判決のポイントは？', answer: '刑法200条は法の下の平等（憲法14条1項）に違反し無効。', deck: 'デフォルト', subdeck: '', lastRating: null, created: new Date().toISOString() }
-      ];
-      for (const s of samples) { const ref = await cardsCol().add(s); cards.push({ id: ref.id, ...s }); }
-    }
+/* ========== Stats ========== */
+function renderStats(){document.getElementById('s-total-cards').textContent=cards.length;document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-decks').textContent=decks.length}
+document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};await saveStats();renderStats();showToast('リセットしました')});
 
-    /* ========== Auth ========== */
-    document.getElementById('google-login-btn').addEventListener('click', async () => {
-      try { await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-      catch (e) { if (e.code !== 'auth/popup-closed-by-user') showToast('ログイン失敗'); }
-    });
-    document.getElementById('guest-login-btn').addEventListener('click', () => { isGuest = true; currentUser = null; initApp(); });
-    document.getElementById('logout-row').addEventListener('click', async () => {
-      document.getElementById('settings-modal').classList.remove('active');
-      if (isGuest) { isGuest = false; showPage('login'); document.getElementById('app-header').style.display = 'none'; return; }
-      await auth.signOut();
-    });
-    auth.onAuthStateChanged(async (user) => {
-      if (user && !isGuest) { currentUser = user; isGuest = false; await initApp(); }
-      else if (!isGuest) { currentUser = null; document.getElementById('loading').classList.add('hidden'); document.getElementById('app-header').style.display = 'none'; showPage('login'); }
-    });
-    async function initApp() {
-      document.getElementById('loading').classList.remove('hidden');
-      await loadData();
-      document.getElementById('loading').classList.add('hidden');
-      document.getElementById('app-header').style.display = 'flex';
-      document.getElementById('header-user-name').textContent = isGuest ? 'ゲスト' : (currentUser?.displayName || currentUser?.email || 'ユーザー');
-      navigateTo('home');
-    }
+/* ========== Settings ========== */
+document.getElementById('settings-btn').addEventListener('click',()=>document.getElementById('settings-modal').classList.add('active'));
+document.getElementById('settings-close').addEventListener('click',()=>document.getElementById('settings-modal').classList.remove('active'));
+document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 
-    /* ========== Navigation ========== */
-    function showPage(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById('page-' + id).classList.add('active'); }
+/* ========== Import/Export ========== */
+document.getElementById('export-btn').addEventListener('click',()=>{const b=new Blob([JSON.stringify({cards,decks,stats,exportDate:new Date().toISOString()},null,2)],{type:'application/json'});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=`ankimaster_${new Date().toISOString().split('T')[0]}.json`;a.click();URL.revokeObjectURL(u)});
+document.getElementById('import-btn').addEventListener('click',()=>document.getElementById('import-file').click());
+document.getElementById('import-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev=>{try{const d=JSON.parse(ev.target.result);if(d.cards){const add=confirm('既存に追加？\nOK=追加 / キャンセル=置き換え');if(!add){if(!isGuest){for(const c of cards)await cardsCol().doc(c.id).delete()}cards=[]}for(const c of d.cards)await addCard({question:c.question,answer:c.answer,deck:c.deck||'デフォルト',subdeck:c.subdeck||'',lastRating:c.lastRating||null,created:c.created||new Date().toISOString()})}if(d.decks){const names=[...new Set([...decks.map(x=>x.name),...(d.decks.map(x=>typeof x==='string'?x:x.name))])];decks=names.map(n=>getDeck(n)||{name:n,subdecks:(d.decks.find(x=>(typeof x==='string'?x:x.name)===n))?.subdecks||[],publishedId:null});await saveDecks()}renderDeckList();showToast('インポート完了！')}catch{showToast('読み込み失敗')}};r.readAsText(f);e.target.value=''});
 
-    function navigateTo(page, data) {
-      stopAutoPlay();
-      const back = document.getElementById('back-btn');
-      const title = document.getElementById('header-title');
-      switch (page) {
-        case 'home':
-          showPage('home'); back.classList.remove('visible'); title.textContent = 'デッキ'; renderDeckList(); break;
-        case 'study':
-          showPage('study'); back.classList.add('visible');
-          currentDeck = data.deck; currentSubdeck = data.subdeck || null;
-          title.textContent = currentSubdeck ? `${currentDeck} > ${currentSubdeck}` : currentDeck;
-          studyFilter = 'all'; startStudy(); break;
-        case 'manage':
-          showPage('manage'); back.classList.add('visible');
-          currentDeck = data; title.textContent = data + ' - 管理';
-          resetForm(); renderManageSubdecks(); renderManageList(); break;
-        case 'stats':
-          showPage('stats'); back.classList.add('visible'); title.textContent = '統計'; renderStats(); break;
-      }
-    }
-    document.getElementById('back-btn').addEventListener('click', () => navigateTo('home'));
-    document.getElementById('stats-btn').addEventListener('click', () => navigateTo('stats'));
-
-    /* ========== Helpers ========== */
-    function getDeck(name) { return decks.find(d => d.name === name); }
-    function deckCards(deckName) { return cards.filter(c => c.deck === deckName); }
-    function subdeckCards(deckName, sd) { return cards.filter(c => c.deck === deckName && c.subdeck === sd); }
-    function countByRating(arr, r) { return arr.filter(c => c.lastRating === r).length; }
-    function countUnrated(arr) { return arr.filter(c => !c.lastRating).length; }
-
-    /* ========== Home ========== */
-    function renderDeckList() {
-      const el = document.getElementById('deck-list');
-      let html = '';
-      for (const d of decks) {
-        const dc = deckCards(d.name);
-        const inc = countByRating(dc, 'incorrect'), cor = countByRating(dc, 'correct'), und = countByRating(dc, 'understood');
-        html += `<div class="deck-card" data-deck="${esc(d.name)}">
-          <div class="deck-info"><h3>${esc(d.name)}</h3>
-            <div class="deck-meta"><span>${dc.length}枚</span></div>
-            <div class="deck-rating-dots">
-              ${inc ? `<span class="dot-incorrect">&#x2716; ${inc}</span>` : ''}
-              ${cor ? `<span class="dot-correct">&#x2714; ${cor}</span>` : ''}
-              ${und ? `<span class="dot-understood">&#x2605; ${und}</span>` : ''}
-            </div>
-          </div>
-          <div class="deck-card-actions">
-            <button class="deck-action-btn" data-act="manage" data-deck="${esc(d.name)}">&#x270f;</button>
-            ${d.name !== 'デフォルト' ? `<button class="deck-action-btn" data-act="delete" data-deck="${esc(d.name)}">&#x1f5d1;</button>` : ''}
-            <span class="deck-arrow">&#x276f;</span>
-          </div>
-        </div>`;
-        // Sub-decks
-        for (const sd of d.subdecks) {
-          const sc = subdeckCards(d.name, sd);
-          html += `<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}">
-            <div><h4>${esc(sd)}</h4><div class="subdeck-meta">${sc.length}枚</div></div>
-            <span class="deck-arrow">&#x276f;</span>
-          </div>`;
-        }
-      }
-      el.innerHTML = html;
-
-      el.querySelectorAll('.deck-card').forEach(c => {
-        c.addEventListener('click', (e) => {
-          const t = e.target.closest('[data-act]');
-          const dn = c.dataset.deck;
-          if (t) { e.stopPropagation(); if (t.dataset.act === 'manage') navigateTo('manage', dn); if (t.dataset.act === 'delete') deleteDeckAction(dn); }
-          else navigateTo('study', { deck: dn });
-        });
-      });
-      el.querySelectorAll('.subdeck-card').forEach(c => {
-        c.addEventListener('click', () => navigateTo('study', { deck: c.dataset.deck, subdeck: c.dataset.subdeck }));
-      });
-    }
-
-    document.getElementById('add-deck-btn').addEventListener('click', async () => {
-      const input = document.getElementById('new-deck-input');
-      const name = input.value.trim();
-      if (name && !getDeck(name)) { decks.push({ name, subdecks: [] }); await saveDecks(); input.value = ''; renderDeckList(); showToast(`「${name}」を追加`); }
-    });
-    document.getElementById('new-deck-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-deck-btn').click(); } });
-
-    async function deleteDeckAction(name) {
-      if (!confirm(`「${name}」を削除？\nカードはデフォルトに移動します。`)) return;
-      for (const c of cards) { if (c.deck === name) { c.deck = 'デフォルト'; c.subdeck = ''; if (!isGuest) await cardsCol().doc(c.id).update({ deck: 'デフォルト', subdeck: '' }); } }
-      if (isGuest) LS.save('fc_cards', cards);
-      decks = decks.filter(d => d.name !== name); await saveDecks(); renderDeckList();
-    }
-
-    /* ========== Study ========== */
-    function getStudyPool() {
-      let pool;
-      if (currentSubdeck) pool = subdeckCards(currentDeck, currentSubdeck);
-      else pool = deckCards(currentDeck);
-
-      if (studyFilter === 'all') return pool;
-      if (studyFilter === 'unrated') return pool.filter(c => !c.lastRating);
-      return pool.filter(c => c.lastRating === studyFilter);
-    }
-
-    function startStudy() {
-      renderStudyFilters();
-      studyCards = getStudyPool();
-      studyIndex = 0; answerShown = false;
-      renderStudyCard();
-    }
-
-    function renderStudyFilters() {
-      const pool = currentSubdeck ? subdeckCards(currentDeck, currentSubdeck) : deckCards(currentDeck);
-      const all = pool.length, inc = countByRating(pool, 'incorrect'), cor = countByRating(pool, 'correct'), und = countByRating(pool, 'understood'), unr = countUnrated(pool);
-      const filters = [
-        { key: 'all', label: '全て', count: all },
-        { key: 'incorrect', label: '不正解', count: inc },
-        { key: 'correct', label: '正解', count: cor },
-        { key: 'understood', label: '理解した', count: und },
-        { key: 'unrated', label: '未学習', count: unr }
-      ];
-      document.getElementById('study-filters').innerHTML = filters.map(f =>
-        `<button class="study-filter-btn ${studyFilter === f.key ? 'active' : ''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`
-      ).join('');
-      document.querySelectorAll('.study-filter-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          studyFilter = btn.dataset.filter;
-          studyCards = getStudyPool();
-          studyIndex = 0; answerShown = false;
-          renderStudyFilters(); renderStudyCard();
-        });
-      });
-    }
-
-    function renderStudyCard() {
-      const qEl = document.getElementById('anki-question'), aEl = document.getElementById('anki-answer');
-      const div = document.getElementById('anki-divider'), showBtn = document.getElementById('show-answer-btn');
-      const rating = document.getElementById('anki-rating'), label = document.getElementById('anki-label');
-      const sdEl = document.getElementById('anki-subdeck');
-
-      document.getElementById('study-deck-name').textContent = currentSubdeck ? `${currentDeck} > ${currentSubdeck}` : currentDeck;
-
-      if (studyCards.length === 0) {
-        qEl.textContent = 'カードがありません'; aEl.style.display = 'none'; div.style.display = 'none';
-        showBtn.style.display = 'none'; rating.style.display = 'none'; sdEl.style.display = 'none';
-        document.getElementById('study-progress-text').textContent = '0 / 0';
-        document.getElementById('study-progress-fill').style.width = '0%';
-        label.textContent = ''; return;
-      }
-
-      const card = studyCards[studyIndex];
-      document.getElementById('study-progress-text').textContent = `${studyIndex + 1} / ${studyCards.length}`;
-      document.getElementById('study-progress-fill').style.width = `${((studyIndex + 1) / studyCards.length) * 100}%`;
-      qEl.textContent = card.question; aEl.textContent = card.answer;
-
-      if (card.subdeck) { sdEl.textContent = card.subdeck; sdEl.style.display = 'block'; }
-      else sdEl.style.display = 'none';
-
-      if (answerShown) {
-        label.textContent = '問題 + 答え'; aEl.style.display = 'block'; div.style.display = 'block';
-        showBtn.style.display = 'none'; rating.style.display = 'flex';
-      } else {
-        label.textContent = '問題'; aEl.style.display = 'none'; div.style.display = 'none';
-        showBtn.style.display = 'block'; rating.style.display = 'none';
-      }
-    }
-
-    document.getElementById('show-answer-btn').addEventListener('click', () => { answerShown = true; renderStudyCard(); });
-    document.getElementById('anki-card').addEventListener('click', () => {
-      if (!answerShown && studyCards.length > 0) { answerShown = true; renderStudyCard(); }
-    });
-
-    document.querySelectorAll('.anki-rating-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const r = btn.dataset.rating;
-        const card = studyCards[studyIndex];
-        stats.reviews++; stats[r]++;
-        await updateCard(card.id, { lastRating: r });
-        await saveStats();
-        studyIndex = (studyIndex + 1) % studyCards.length;
-        answerShown = false;
-        // リフレッシュプール
-        studyCards = getStudyPool();
-        if (studyIndex >= studyCards.length) studyIndex = 0;
-        renderStudyFilters(); renderStudyCard();
-      });
-    });
-
-    document.getElementById('shuffle-btn').addEventListener('click', () => {
-      for (let i = studyCards.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [studyCards[i], studyCards[j]] = [studyCards[j], studyCards[i]]; }
-      studyIndex = 0; answerShown = false; renderStudyCard(); showToast('シャッフルしました');
-    });
-
-    document.getElementById('autoplay-btn').addEventListener('click', () => {
-      if (studyCards.length === 0) return;
-      isPlaying = true; document.getElementById('autoplay-bar').classList.remove('hidden');
-      document.getElementById('autoplay-btn').classList.add('active'); autoPlayNext();
-    });
-    document.getElementById('autoplay-stop').addEventListener('click', stopAutoPlay);
-    function stopAutoPlay() { isPlaying = false; if (playTimer) clearTimeout(playTimer); document.getElementById('autoplay-bar').classList.add('hidden'); document.getElementById('autoplay-btn').classList.remove('active'); }
-    function autoPlayNext() {
-      if (!isPlaying) return;
-      const qD = parseInt(document.getElementById('cfg-q-delay').value) * 1000;
-      const aD = parseInt(document.getElementById('cfg-a-delay').value) * 1000;
-      answerShown = false; renderStudyCard();
-      document.getElementById('autoplay-status').textContent = '問題を表示中...';
-      playTimer = setTimeout(() => {
-        if (!isPlaying) return; answerShown = true; renderStudyCard();
-        document.getElementById('autoplay-status').textContent = '答えを表示中...';
-        playTimer = setTimeout(() => {
-          if (!isPlaying) return; stats.reviews++; stats.correct++; saveStats();
-          studyIndex = (studyIndex + 1) % studyCards.length; autoPlayNext();
-        }, aD);
-      }, qD);
-    }
-
-    /* ========== Manage ========== */
-    function renderManageSubdecks() {
-      const deck = getDeck(currentDeck);
-      if (!deck) return;
-      const chips = document.getElementById('subdeck-chips');
-      chips.innerHTML = deck.subdecks.map(sd => `<div class="subdeck-chip">${esc(sd)}<span class="subdeck-chip-del" data-sd="${esc(sd)}">&#x2715;</span></div>`).join('');
-      chips.querySelectorAll('.subdeck-chip-del').forEach(el => {
-        el.addEventListener('click', async () => {
-          const sd = el.dataset.sd;
-          if (!confirm(`サブデッキ「${sd}」を削除？\nカードは直下に移動します。`)) return;
-          for (const c of cards) { if (c.deck === currentDeck && c.subdeck === sd) { c.subdeck = ''; if (!isGuest) await cardsCol().doc(c.id).update({ subdeck: '' }); } }
-          if (isGuest) LS.save('fc_cards', cards);
-          deck.subdecks = deck.subdecks.filter(s => s !== sd); await saveDecks();
-          renderManageSubdecks(); renderManageList();
-        });
-      });
-      // サブデッキセレクト更新
-      const sel = document.getElementById('card-subdeck-select');
-      sel.innerHTML = '<option value="">なし（直下）</option>' + deck.subdecks.map(sd => `<option value="${esc(sd)}">${esc(sd)}</option>`).join('');
-      document.getElementById('subdeck-select-group').style.display = deck.subdecks.length > 0 ? 'block' : 'none';
-    }
-
-    document.getElementById('add-subdeck-btn').addEventListener('click', async () => {
-      const input = document.getElementById('new-subdeck-input');
-      const name = input.value.trim();
-      const deck = getDeck(currentDeck);
-      if (name && deck && !deck.subdecks.includes(name)) {
-        deck.subdecks.push(name); await saveDecks(); input.value = '';
-        renderManageSubdecks(); showToast(`サブデッキ「${name}」を追加`);
-      }
-    });
-    document.getElementById('new-subdeck-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-subdeck-btn').click(); } });
-
-    function renderManageList() {
-      const dc = deckCards(currentDeck);
-      document.getElementById('manage-card-count').textContent = `カード (${dc.length}枚)`;
-      const el = document.getElementById('manage-card-list');
-      if (dc.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>'; return; }
-      el.innerHTML = dc.map(c => {
-        let tags = '';
-        if (c.subdeck) tags += `<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;
-        if (c.lastRating === 'incorrect') tags += '<span class="card-item-tag tag-incorrect">不正解</span>';
-        if (c.lastRating === 'correct') tags += '<span class="card-item-tag tag-correct">正解</span>';
-        if (c.lastRating === 'understood') tags += '<span class="card-item-tag tag-understood">理解した</span>';
-        return `<div class="card-item">
-          <div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags ? `<div class="card-item-tags">${tags}</div>` : ''}</div>
-          <div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div>
-        </div>`;
-      }).join('');
-      el.querySelectorAll('.card-item-btn').forEach(btn => {
-        btn.addEventListener('click', () => { if (btn.dataset.act === 'edit') editCardAction(btn.dataset.id); if (btn.dataset.act === 'del') deleteCardAction(btn.dataset.id); });
-      });
-    }
-
-    document.getElementById('card-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const q = document.getElementById('card-question').value.trim();
-      const a = document.getElementById('card-answer').value.trim();
-      const sd = document.getElementById('card-subdeck-select').value;
-      if (!q || !a) return;
-      if (editingId) {
-        await updateCard(editingId, { question: q, answer: a, subdeck: sd }); resetForm(); showToast('更新しました');
-      } else {
-        await addCard({ question: q, answer: a, deck: currentDeck, subdeck: sd, lastRating: null, created: new Date().toISOString() }); showToast('追加しました');
-      }
-      document.getElementById('card-question').value = ''; document.getElementById('card-answer').value = '';
-      renderManageList();
-    });
-
-    function editCardAction(id) {
-      const card = cards.find(c => c.id === id); if (!card) return;
-      editingId = id;
-      document.getElementById('card-question').value = card.question;
-      document.getElementById('card-answer').value = card.answer;
-      document.getElementById('card-subdeck-select').value = card.subdeck || '';
-      document.getElementById('manage-form-title').textContent = 'カードを編集';
-      document.getElementById('card-submit-btn').textContent = '更新';
-      document.getElementById('card-cancel-btn').style.display = 'block';
-      document.getElementById('card-question').scrollIntoView({ behavior: 'smooth' });
-    }
-    async function deleteCardAction(id) { if (!confirm('削除しますか？')) return; await removeCard(id); renderManageList(); showToast('削除しました'); }
-    function resetForm() {
-      editingId = null; document.getElementById('card-question').value = ''; document.getElementById('card-answer').value = '';
-      document.getElementById('manage-form-title').textContent = 'カードを追加';
-      document.getElementById('card-submit-btn').textContent = '追加'; document.getElementById('card-cancel-btn').style.display = 'none';
-    }
-    document.getElementById('card-cancel-btn').addEventListener('click', resetForm);
-
-    /* ========== Stats ========== */
-    function renderStats() {
-      document.getElementById('s-total-cards').textContent = cards.length;
-      document.getElementById('s-total-reviews').textContent = stats.reviews;
-      document.getElementById('s-incorrect').textContent = stats.incorrect;
-      document.getElementById('s-correct').textContent = stats.correct;
-      document.getElementById('s-understood').textContent = stats.understood;
-      document.getElementById('s-decks').textContent = decks.length;
-    }
-    document.getElementById('reset-stats-btn').addEventListener('click', async () => {
-      if (!confirm('統計をリセット？')) return;
-      stats = { reviews: 0, incorrect: 0, correct: 0, understood: 0 }; await saveStats(); renderStats(); showToast('リセットしました');
-    });
-
-    /* ========== Settings ========== */
-    document.getElementById('settings-btn').addEventListener('click', () => document.getElementById('settings-modal').classList.add('active'));
-    document.getElementById('settings-close').addEventListener('click', () => document.getElementById('settings-modal').classList.remove('active'));
-    document.getElementById('settings-modal').addEventListener('click', e => { if (e.target === e.currentTarget) e.currentTarget.classList.remove('active'); });
-
-    /* ========== Import / Export ========== */
-    document.getElementById('export-btn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify({ cards, decks, stats, exportDate: new Date().toISOString() }, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob); const a = document.createElement('a');
-      a.href = url; a.download = `ankimaster_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url);
-    });
-    document.getElementById('import-btn').addEventListener('click', () => document.getElementById('import-file').click());
-    document.getElementById('import-file').addEventListener('change', async (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        try {
-          const data = JSON.parse(ev.target.result);
-          if (data.cards) {
-            const addMode = confirm('既存に追加？\nOK=追加 / キャンセル=置き換え');
-            if (!addMode) { if (!isGuest) { for (const c of cards) await cardsCol().doc(c.id).delete(); } cards = []; }
-            for (const c of data.cards) await addCard({ question: c.question, answer: c.answer, deck: c.deck || 'デフォルト', subdeck: c.subdeck || '', lastRating: c.lastRating || null, created: c.created || new Date().toISOString() });
-          }
-          if (data.decks) { decks = migrateDecks([...new Set([...decks.map(d => d.name), ...(Array.isArray(data.decks) ? data.decks.map(d => typeof d === 'string' ? d : d.name) : [])])].map(n => ({ name: n, subdecks: getDeck(n)?.subdecks || (data.decks.find(d => d.name === n)?.subdecks) || [] }))); await saveDecks(); }
-          renderDeckList(); showToast('インポート完了！');
-        } catch { showToast('読み込み失敗'); }
-      };
-      reader.readAsText(file); e.target.value = '';
-    });
-
-    /* ========== Util ========== */
-    function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-    function showToast(msg) { const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2500); }
-  </script>
+/* ========== Util ========== */
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+function showToast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500)}
+</script>
 </body>
 </html>
