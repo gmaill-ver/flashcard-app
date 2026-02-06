@@ -7,6 +7,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;background:#f0f0f0;min-height:100vh;color:#333}
@@ -143,6 +144,10 @@
     .stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
     .stat-card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;text-align:center}
     .stat-value{font-size:1.8rem;font-weight:700;color:#2196f3}.stat-label{font-size:.8rem;color:#999;margin-top:4px}
+    .stats-chart-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:20px}
+    .stats-range{display:flex;gap:6px;margin-bottom:12px}
+    .stats-range-btn{padding:6px 16px;border:1px solid #ddd;border-radius:20px;background:#fff;font-size:.8rem;cursor:pointer;color:#666;transition:all .2s}
+    .stats-range-btn.active{background:#333;color:#fff;border-color:#333}
 
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;justify-content:center;align-items:flex-end}
     .modal-overlay.active{display:flex}
@@ -256,6 +261,14 @@
       <div class="stat-card"><div class="stat-value" id="s-understood">0</div><div class="stat-label">理解した</div></div>
       <div class="stat-card"><div class="stat-value" id="s-decks">0</div><div class="stat-label">デッキ数</div></div>
     </div>
+    <div class="stats-chart-wrap">
+      <div class="stats-range">
+        <button class="stats-range-btn active" data-range="day">日</button>
+        <button class="stats-range-btn" data-range="week">週</button>
+        <button class="stats-range-btn" data-range="month">月</button>
+      </div>
+      <canvas id="stats-chart"></canvas>
+    </div>
     <button class="btn btn-red" style="width:100%" id="reset-stats-btn">統計をリセット</button>
   </div>
 
@@ -302,6 +315,7 @@ let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null;
 let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='';
+let dailyStats={},statsChart=null,statsRange='day';
 
 /* ========== LS ========== */
 const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},save(k,v){localStorage.setItem(k,JSON.stringify(v))}};
@@ -313,21 +327,23 @@ function migrateDecks(r){if(!r||!r.length)return[{name:'デフォルト',subdeck
 function migrateStats(r){const s=r||{};return{reviews:s.reviews||0,incorrect:s.incorrect||s.hard||0,correct:s.correct||s.good||0,understood:s.understood||s.easy||0}}
 
 async function loadData(){
-  if(isGuest){decks=migrateDecks(LS.load('fc_decks',null));cards=LS.load('fc_cards',[]);stats=migrateStats(LS.load('fc_stats',null));if(!cards.length)seedSample();syncAllDeckMeta();return}
+  if(isGuest){decks=migrateDecks(LS.load('fc_decks',null));cards=LS.load('fc_cards',[]);stats=migrateStats(LS.load('fc_stats',null));dailyStats=LS.load('fc_daily',{});if(!cards.length)seedSample();syncAllDeckMeta();return}
   try{
     const doc=await userDoc().get();let needsMeta=false;
-    if(doc.exists){const d=doc.data(),raw=d.decks;decks=migrateDecks(raw);stats=migrateStats(d.stats);needsMeta=raw&&raw.length>0&&raw[0].cardCount==null}
+    if(doc.exists){const d=doc.data(),raw=d.decks;decks=migrateDecks(raw);stats=migrateStats(d.stats);dailyStats=d.dailyStats||{};needsMeta=raw&&raw.length>0&&raw[0].cardCount==null}
     else{decks=[{name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}];stats={reviews:0,incorrect:0,correct:0,understood:0};await userDoc().set({decks,stats});await seedFS();syncAllDeckMeta();await saveDecks()}
     if(needsMeta){const snap=await cardsCol().get();const all=snap.docs.map(d=>({id:d.id,...d.data()}));for(const dk of decks){const dc=all.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}};await saveDecks()}
     cards=[];
   }catch(e){console.error(e);showToast('読み込み失敗')}
 }
 async function saveDecks(){if(isGuest){LS.save('fc_decks',decks);return}try{await userDoc().update({decks})}catch(e){console.error(e)}}
-async function saveStats(){if(isGuest){LS.save('fc_stats',stats);return}try{await userDoc().update({stats})}catch(e){console.error(e)}}
+async function saveStats(){if(isGuest){LS.save('fc_stats',stats);LS.save('fc_daily',dailyStats);return}try{await userDoc().update({stats,dailyStats})}catch(e){console.error(e)}}
 async function addCard(c,skipMeta){if(isGuest){c.id=Date.now().toString()+Math.random();cards.push(c);LS.save('fc_cards',cards)}else{try{const r=await cardsCol().add(c);cards.push({id:r.id,...c})}catch(e){console.error(e);showToast('保存失敗');return}}if(!skipMeta){const dk=getDeck(c.deck);if(dk){dk.cardCount=(dk.cardCount||0)+1;await saveDecks()}}}
 async function updateCard(id,data){const i=cards.findIndex(c=>c.id===id);if(i===-1)return;cards[i]={...cards[i],...data};if(isGuest){LS.save('fc_cards',cards);return}try{await cardsCol().doc(id).update(data)}catch(e){console.error(e)}}
 async function removeCard(id){const old=cards.find(c=>c.id===id);cards=cards.filter(c=>c.id!==id);if(isGuest){LS.save('fc_cards',cards)}else{try{await cardsCol().doc(id).delete()}catch(e){console.error(e)}}if(old){const dk=getDeck(old.deck);if(dk){dk.cardCount=Math.max(0,(dk.cardCount||0)-1);if(old.lastRating&&dk.ratings)dk.ratings[old.lastRating]=Math.max(0,(dk.ratings[old.lastRating]||0)-1);await saveDecks()}}}
 
+function todayStr(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function trackDaily(r){const t=todayStr();if(!dailyStats[t])dailyStats[t]={reviews:0,incorrect:0,correct:0,understood:0};dailyStats[t].reviews++;dailyStats[t][r]++}
 function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
 function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
 async function loadDeckCards(name){if(isGuest)return;try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){console.error(e);showToast('カード読み込み失敗')}}
@@ -494,7 +510,7 @@ document.getElementById('anki-card').addEventListener('click',()=>{if(!answerSho
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
   const r=b.dataset.rating;
   if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
-  const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;
+  const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;trackDaily(r);
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
   await updateCard(card.id,upd);await saveStats();
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
@@ -507,7 +523,7 @@ document.getElementById('shuffle-btn').addEventListener('click',()=>{for(let i=s
 document.getElementById('autoplay-btn').addEventListener('click',()=>{if(!studyCards.length)return;isPlaying=true;document.getElementById('autoplay-bar').classList.remove('hidden');document.getElementById('autoplay-btn').classList.add('active');autoPlayNext()});
 document.getElementById('autoplay-stop').addEventListener('click',stopAutoPlay);
 function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);document.getElementById('autoplay-bar').classList.add('hidden');document.getElementById('autoplay-btn').classList.remove('active')}
-function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();document.getElementById('autoplay-status').textContent='問題を表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();document.getElementById('autoplay-status').textContent='答えを表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
+function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();document.getElementById('autoplay-status').textContent='問題を表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();document.getElementById('autoplay-status').textContent='答えを表示中...';playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct');saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
 
 /* ========== Manage ========== */
 function renderPublishSection(){
@@ -597,8 +613,19 @@ function resetForm(){editingId=null;document.getElementById('card-question').val
 document.getElementById('card-cancel-btn').addEventListener('click',resetForm);
 
 /* ========== Stats ========== */
-function renderStats(){document.getElementById('s-total-cards').textContent=decks.reduce((s,d)=>s+(d.cardCount||0),0);document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-decks').textContent=decks.length}
-document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};await saveStats();renderStats();showToast('リセットしました')});
+function renderStats(){document.getElementById('s-total-cards').textContent=decks.reduce((s,d)=>s+(d.cardCount||0),0);document.getElementById('s-total-reviews').textContent=stats.reviews;document.getElementById('s-incorrect').textContent=stats.incorrect;document.getElementById('s-correct').textContent=stats.correct;document.getElementById('s-understood').textContent=stats.understood;document.getElementById('s-decks').textContent=decks.length;renderStatsChart()}
+function dateStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function renderStatsChart(){
+  const ctx=document.getElementById('stats-chart');if(!ctx)return;
+  let labels=[],data=[],dayInfo=[];const now=new Date();
+  if(statsRange==='day'){for(let i=13;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);const k=dateStr(d);const dow=d.getDay();labels.push(`${d.getMonth()+1}/${d.getDate()}`);dayInfo.push(dow);data.push(dailyStats[k]?.reviews||0)}}
+  else if(statsRange==='week'){for(let i=11;i>=0;i--){const wEnd=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i*7);const wSt=new Date(wEnd.getFullYear(),wEnd.getMonth(),wEnd.getDate()-6);let t=0;for(let j=0;j<7;j++){const d=new Date(wSt.getFullYear(),wSt.getMonth(),wSt.getDate()+j);t+=dailyStats[dateStr(d)]?.reviews||0}labels.push(`${wSt.getMonth()+1}/${wSt.getDate()}~`);dayInfo.push(-1);data.push(t)}}
+  else{for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const y=d.getFullYear(),m=d.getMonth();let t=0;for(const[k,v]of Object.entries(dailyStats)){const kd=new Date(k+'T00:00:00');if(kd.getFullYear()===y&&kd.getMonth()===m)t+=v.reviews||0}labels.push(`${m+1}月`);dayInfo.push(-1);data.push(t)}}
+  if(statsChart)statsChart.destroy();
+  statsChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'学習数',data,borderColor:'#2196f3',backgroundColor:'rgba(33,150,243,0.1)',fill:true,tension:0.3,pointRadius:4,pointBackgroundColor:'#2196f3'}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:c=>{const dow=dayInfo[c.index];if(dow===0)return'#e53935';if(dow===6)return'#1565c0';return'#666'},font:{size:11}}},y:{beginAtZero:true,ticks:{precision:0}}}}})
+}
+document.querySelectorAll('.stats-range-btn').forEach(b=>{b.addEventListener('click',()=>{statsRange=b.dataset.range;document.querySelectorAll('.stats-range-btn').forEach(x=>x.classList.toggle('active',x===b));renderStatsChart()})});
+document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};dailyStats={};await saveStats();renderStats();showToast('リセットしました')});
 
 /* ========== Settings ========== */
 document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){renderPublishSection();document.getElementById('manage-settings-modal').classList.add('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('settings-modal').classList.add('active')}});
