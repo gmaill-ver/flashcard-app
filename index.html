@@ -616,14 +616,17 @@ document.getElementById('add-subdeck-btn').addEventListener('click',async()=>{co
 document.getElementById('new-subdeck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-subdeck-btn').click()}});
 
 function renderManageList(){
+  try{
   const dc=deckCards(currentDeck);document.getElementById('manage-card-count').textContent=`カード (${dc.length}枚)`;
   const el=document.getElementById('manage-card-list');const fEl=document.getElementById('manage-subdeck-filter');
   const deck=getDeck(currentDeck),sds=deck?.subdecks||[];
   if(sds.length>0){fEl.innerHTML=`<select id="subdeck-filter-select" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;color:#555"><option value="">全て</option>${sds.map(s=>`<option value="${esc(s)}"${manageSubdeckFilter===s?' selected':''}>${esc(s)}</option>`).join('')}</select>`;document.getElementById('subdeck-filter-select').addEventListener('change',e=>{manageSubdeckFilter=e.target.value;renderManageList()})}else{fEl.innerHTML=''}
   if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';return}
   const filtered=manageSubdeckFilter?dc.filter(c=>c.subdeck===manageSubdeckFilter):dc;
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>該当するカードがありません</p></div>';return}
   el.innerHTML=filtered.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
   el.querySelectorAll('.card-item-btn').forEach(b=>{b.addEventListener('click',()=>{if(b.dataset.act==='edit')editCardAction(b.dataset.id);if(b.dataset.act==='del')deleteCardAction(b.dataset.id)})});
+  }catch(e){console.error('renderManageList error:',e)}
 }
 
 document.getElementById('card-form').addEventListener('submit',async e=>{e.preventDefault();const q=document.getElementById('card-question').value.trim(),a=document.getElementById('card-answer').value.trim(),sd=document.getElementById('card-subdeck-select').value,dt=document.getElementById('card-detail').value.trim();if(!q||!a)return;if(editingId){await updateCard(editingId,{question:q,answer:a,subdeck:sd,detail:dt||''});resetForm();showToast('更新しました')}else{await addCard({question:q,answer:a,detail:dt||'',deck:currentDeck,subdeck:sd,lastRating:null,created:new Date().toISOString()});showToast('追加しました')}document.getElementById('card-question').value='';document.getElementById('card-answer').value='';document.getElementById('card-detail').value='';renderManageList()});
