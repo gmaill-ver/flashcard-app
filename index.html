@@ -464,7 +464,7 @@ async function studyPublicDeck(id){
   try{
     const doc=await db.collection('publicDecks').doc(id).get();
     const snap=await db.collection('publicDecks').doc(id).collection('cards').orderBy('order').get();
-    const pubCards=snap.docs.map((d,i)=>({question:d.data().question,answer:d.data().answer,subdeck:'',order:i}));
+    const pubCards=snap.docs.map((d,i)=>({question:d.data().question,answer:d.data().answer,detail:d.data().detail||'',subdeck:d.data().subdeck||'',order:i}));
     document.getElementById('loading').classList.add('hidden');
     if(!pubCards.length){showToast('カードがありません');return}
     activeHomeTab='public';
@@ -481,10 +481,11 @@ async function copyPublicDeck(id){
     const d=doc.data();
     const deckName=d.title;
     let finalName=deckName;let cnt=1;while(getDeck(finalName)){finalName=`${deckName} (${cnt++})`}
-    decks.push({name:finalName,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
+    decks.push({name:finalName,subdecks:d.subdecks||[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
     const snap=await db.collection('publicDecks').doc(id).collection('cards').orderBy('order').get();
-    for(const c of snap.docs){const cd=c.data();await addCard({question:cd.question,answer:cd.answer,deck:finalName,subdeck:'',lastRating:null,created:new Date().toISOString()},true)}
-    const newDeck=getDeck(finalName);if(newDeck){newDeck.cardCount=snap.docs.length;newDeck.ratings={incorrect:0,correct:0,understood:0}}
+    const newCards=snap.docs.map(c=>{const cd=c.data();return{question:cd.question,answer:cd.answer,detail:cd.detail||'',deck:finalName,subdeck:cd.subdeck||'',lastRating:null,created:new Date().toISOString()}});
+    for(let i=0;i<newCards.length;i+=400){const batch=db.batch();newCards.slice(i,i+400).forEach(c=>{const ref=cardsCol().doc();batch.set(ref,c)});await batch.commit()}
+    const newDeck=getDeck(finalName);if(newDeck){newDeck.cardCount=newCards.length;newDeck.ratings={incorrect:0,correct:0,understood:0}}
     cards=[];await saveDecks();
     document.getElementById('loading').classList.add('hidden');
     showToast(`「${finalName}」にコピーしました`);setHomeTab('my');renderDeckList();
@@ -567,7 +568,7 @@ async function publishDeck(isUpdate){
   const dc=deckCards(currentDeck);
   if(!dc.length){showToast('カードがないデッキは公開できません');return}
   const desc=document.getElementById('publish-desc').value.trim();
-  const data={title:currentDeck,description:desc,authorId:currentUser.uid,authorName:currentUser.displayName||'匿名',cardCount:dc.length,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const data={title:currentDeck,description:desc,authorId:currentUser.uid,authorName:currentUser.displayName||'匿名',cardCount:dc.length,subdecks:deck.subdecks||[],updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
   try{
     let docId;
     if(isUpdate&&deck.publishedId){
@@ -575,7 +576,7 @@ async function publishDeck(isUpdate){
       await db.collection('publicDecks').doc(docId).update(data);
       // 既存カード削除
       const old=await db.collection('publicDecks').doc(docId).collection('cards').get();
-      const batch1=db.batch();old.forEach(d=>batch1.delete(d.ref));await batch1.commit();
+      for(let i=0;i<old.docs.length;i+=400){const b=db.batch();old.docs.slice(i,i+400).forEach(d=>b.delete(d.ref));await b.commit()}
     }else{
       data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
       const ref=await db.collection('publicDecks').add(data);docId=ref.id;
@@ -583,7 +584,7 @@ async function publishDeck(isUpdate){
     }
     // カード追加（バッチ）
     let batch=db.batch(),cnt=0;
-    dc.forEach((c,i)=>{const ref=db.collection('publicDecks').doc(docId).collection('cards').doc();batch.set(ref,{question:c.question,answer:c.answer,order:i});cnt++;if(cnt>=400){batch.commit();batch=db.batch();cnt=0}});
+    for(let i=0;i<dc.length;i++){const c=dc[i];const ref=db.collection('publicDecks').doc(docId).collection('cards').doc();batch.set(ref,{question:c.question,answer:c.answer,detail:c.detail||'',subdeck:c.subdeck||'',order:i});cnt++;if(cnt>=400){await batch.commit();batch=db.batch();cnt=0}}
     if(cnt>0)await batch.commit();
     showToast(isUpdate?'公開デッキを更新しました':'デッキを公開しました');renderPublishSection();renderDeckList();
   }catch(e){console.error(e);showToast('公開に失敗しました')}
@@ -594,7 +595,7 @@ async function unpublishDeck(){
   const deck=getDeck(currentDeck);if(!deck||!deck.publishedId)return;
   try{
     const old=await db.collection('publicDecks').doc(deck.publishedId).collection('cards').get();
-    const batch=db.batch();old.forEach(d=>batch.delete(d.ref));await batch.commit();
+    for(let i=0;i<old.docs.length;i+=400){const batch=db.batch();old.docs.slice(i,i+400).forEach(d=>batch.delete(d.ref));await batch.commit()}
     await db.collection('publicDecks').doc(deck.publishedId).delete();
     deck.publishedId=null;await saveDecks();
     showToast('非公開にしました');renderPublishSection();renderDeckList();
