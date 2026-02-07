@@ -425,12 +425,13 @@ function renderDeckList(){
 }
 
 async function deleteDeckAction(name){
-  if(!confirm(`「${name}」を削除？\nカードはデフォルトに移動。`))return;
-  const delDeck=getDeck(name);const defDeck=getDeck('デフォルト');
-  if(isGuest){for(const c of cards){if(c.deck===name){c.deck='デフォルト';c.subdeck=''}}LS.save('fc_cards',cards)}
-  else{const snap=await cardsCol().where('deck','==',name).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{deck:'デフォルト',subdeck:''}));await batch.commit()}}
-  if(defDeck&&delDeck){defDeck.cardCount=(defDeck.cardCount||0)+(delDeck.cardCount||0);defDeck.ratings={incorrect:(defDeck.ratings?.incorrect||0)+(delDeck.ratings?.incorrect||0),correct:(defDeck.ratings?.correct||0)+(delDeck.ratings?.correct||0),understood:(defDeck.ratings?.understood||0)+(delDeck.ratings?.understood||0)}}
-  decks=decks.filter(d=>d.name!==name);await saveDecks();renderDeckList();
+  if(!confirm(`「${name}」とカードをすべて削除しますか？`))return;
+  const delDeck=getDeck(name);
+  if(isGuest){cards=cards.filter(c=>c.deck!==name);LS.save('fc_cards',cards)}
+  else{const snap=await cardsCol().where('deck','==',name).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.delete(d.ref));await batch.commit()}}
+  if(delDeck&&delDeck.publishedId){try{const old=await db.collection('publicDecks').doc(delDeck.publishedId).collection('cards').get();for(let i=0;i<old.docs.length;i+=400){const b=db.batch();old.docs.slice(i,i+400).forEach(d=>b.delete(d.ref));await b.commit()}await db.collection('publicDecks').doc(delDeck.publishedId).delete()}catch(e){console.error(e)}}
+  decks=decks.filter(d=>d.name!==name);if(!decks.length)decks.push({name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
+  await saveDecks();renderDeckList();showToast(`「${name}」を削除しました`);
 }
 
 async function renameDeckAction(oldName){
@@ -453,9 +454,11 @@ async function loadPublicDecks(){
     const snap=await db.collection('publicDecks').orderBy('updatedAt','desc').get();
     ld.style.display='none';
     if(snap.empty){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4da;</div><p>公開デッキはまだありません</p></div>';return}
-    el.innerHTML=snap.docs.map(doc=>{const d=doc.data();return`<div class="pub-deck-card" data-id="${doc.id}"><div class="pub-deck-title">${esc(d.title)}</div><div class="pub-deck-meta"><span>${d.cardCount||0}枚</span><span>by ${esc(d.authorName||'匿名')}</span></div>${d.description?`<div class="pub-deck-desc">${esc(d.description)}</div>`:''}<div class="pub-deck-actions"><button class="btn btn-blue btn-sm" data-act="study" data-id="${doc.id}">学習する</button>${(!isGuest&&currentUser)?`<button class="btn btn-outline btn-sm" data-act="copy" data-id="${doc.id}">コピーする</button>`:''}</div></div>`}).join('');
+    const uid=currentUser?.uid||'';
+    el.innerHTML=snap.docs.map(doc=>{const d=doc.data();const isMine=uid&&d.authorId===uid;return`<div class="pub-deck-card" data-id="${doc.id}"><div class="pub-deck-title">${esc(d.title)}</div><div class="pub-deck-meta"><span>${d.cardCount||0}枚</span><span>by ${esc(d.authorName||'匿名')}</span></div>${d.description?`<div class="pub-deck-desc">${esc(d.description)}</div>`:''}<div class="pub-deck-actions"><button class="btn btn-blue btn-sm" data-act="study" data-id="${doc.id}">学習する</button>${(!isGuest&&currentUser)?`<button class="btn btn-outline btn-sm" data-act="copy" data-id="${doc.id}">コピーする</button>`:''}${isMine?`<button class="btn btn-red btn-sm" data-act="remove-pub" data-id="${doc.id}">削除</button>`:''}</div></div>`}).join('');
     el.querySelectorAll('[data-act="study"]').forEach(b=>b.addEventListener('click',()=>studyPublicDeck(b.dataset.id)));
     el.querySelectorAll('[data-act="copy"]').forEach(b=>b.addEventListener('click',()=>copyPublicDeck(b.dataset.id)));
+    el.querySelectorAll('[data-act="remove-pub"]').forEach(b=>b.addEventListener('click',()=>removePublicDeck(b.dataset.id)));
   }catch(e){ld.style.display='none';console.error(e);el.innerHTML='<div class="empty-state"><p>読み込みに失敗しました</p></div>'}
 }
 
@@ -490,6 +493,18 @@ async function copyPublicDeck(id){
     document.getElementById('loading').classList.add('hidden');
     showToast(`「${finalName}」にコピーしました`);setHomeTab('my');renderDeckList();
   }catch(e){document.getElementById('loading').classList.add('hidden');console.error(e);showToast('コピー失敗')}
+}
+
+async function removePublicDeck(id){
+  if(!confirm('この公開デッキを削除しますか？'))return;
+  try{
+    const old=await db.collection('publicDecks').doc(id).collection('cards').get();
+    for(let i=0;i<old.docs.length;i+=400){const batch=db.batch();old.docs.slice(i,i+400).forEach(d=>batch.delete(d.ref));await batch.commit()}
+    await db.collection('publicDecks').doc(id).delete();
+    for(const dk of decks){if(dk.publishedId===id){dk.publishedId=null}}
+    await saveDecks();
+    showToast('公開デッキを削除しました');loadPublicDecks();
+  }catch(e){console.error(e);showToast('削除に失敗しました')}
 }
 
 /* ========== Study ========== */
@@ -676,7 +691,7 @@ document.getElementById('settings-deck-input').addEventListener('keydown',e=>{if
 document.getElementById('deck-ops-row').addEventListener('click',()=>{const s=document.getElementById('deck-ops-section');if(s.style.display==='none'){s.style.display='block';document.getElementById('deck-ops-select').innerHTML=decks.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}else{s.style.display='none'}});
 document.getElementById('deck-edit-btn').addEventListener('click',()=>{const name=document.getElementById('deck-ops-select').value;if(name){document.getElementById('settings-modal').classList.remove('active');navigateTo('manage',name)}});
 document.getElementById('deck-rename-btn').addEventListener('click',()=>{const name=document.getElementById('deck-ops-select').value;if(name){document.getElementById('settings-modal').classList.remove('active');renameDeckAction(name)}});
-document.getElementById('deck-delete-btn').addEventListener('click',async()=>{const name=document.getElementById('deck-ops-select').value;if(name==='デフォルト'){showToast('デフォルトデッキは削除できません');return}if(name){document.getElementById('settings-modal').classList.remove('active');await deleteDeckAction(name)}});
+document.getElementById('deck-delete-btn').addEventListener('click',async()=>{const name=document.getElementById('deck-ops-select').value;if(name){document.getElementById('settings-modal').classList.remove('active');await deleteDeckAction(name)}});
 document.getElementById('autoplay-settings-row').addEventListener('click',()=>{const s=document.getElementById('autoplay-settings-section');s.style.display=s.style.display==='none'?'block':'none'});
 document.getElementById('reset-group-row').addEventListener('click',()=>{const s=document.getElementById('reset-group-section');s.style.display=s.style.display==='none'?'block':'none'});
 document.getElementById('howto-row').addEventListener('click',()=>{const s=document.getElementById('howto-section');s.style.display=s.style.display==='none'?'block':'none'});
