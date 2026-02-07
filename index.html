@@ -212,7 +212,6 @@
     <div class="study-progress"><span id="study-progress-text">0 / 0</span><div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div></div></div>
     <div class="anki-card" id="anki-card">
       <span class="anki-card-label" id="anki-label">問題</span>
-      <span class="anki-card-subdeck" id="anki-subdeck" style="display:none"></span>
       <div class="anki-card-text" id="anki-question"></div>
       <hr class="anki-divider" id="anki-divider" style="display:none">
       <div class="anki-card-text anki-answer-section" id="anki-answer" style="display:none"></div>
@@ -509,15 +508,14 @@ function renderStudyFilters(){
   document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
 function renderStudyCard(){
-  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),sd=document.getElementById('anki-subdeck'),cs=document.getElementById('anki-card-stats');
+  const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),cs=document.getElementById('anki-card-stats');
   document.getElementById('study-deck-name').textContent=isPublicStudy?'':currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;
   const dtW=document.getElementById('anki-detail-wrap'),dtE=document.getElementById('anki-detail'),dtT=document.getElementById('anki-detail-toggle');
-  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';rt.style.display='none';sd.style.display='none';cs.style.display='none';dtW.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
+  if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';rt.style.display='none';cs.style.display='none';dtW.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
   const card=studyCards[studyIndex];
   document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${studyCards.length}`;
   document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
   qE.textContent=card.question;aE.textContent=card.answer;
-  if(card.subdeck){sd.textContent=card.subdeck;sd.style.display='block'}else sd.style.display='none';
   const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
   rt.style.display='flex';
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;dtE.style.display='none';dtT.textContent='詳しく ▼'}else{dtW.style.display='none'}}
