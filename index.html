@@ -166,7 +166,8 @@
   </style>
 </head>
 <body>
-  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:.9rem" id="loading-msg">読み込み中...</div></div>
+  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:.9rem" id="loading-msg"></div></div>
+  <script>!function(){const m=['今日も頑張ろう！','継続は力なり','努力は裏切らない','一歩一歩、確実に','昨日の自分を超えろ','やればできる！','合格まであと少し！','未来の自分に投資中','今日の積み重ねが明日の力','夢は逃げない、逃げるのは自分','大吉 ☀','中吉','小吉','吉','末吉（でも頑張れば大吉）','一期一会','七転八起','温故知新','日進月歩','千里の道も一歩から','石の上にも三年','初志貫徹','点滴穿石','文武両道','知行合一','コーヒーでも飲みながら','今日もえらい！','脳みそウォーミングアップ中','天才の朝は暗記から','暗記の鬼と化す','自分がライバル','絶対受かる','今日一番頑張ってる','SNSはほどほどに'];document.getElementById('loading-msg').textContent=m[Math.floor(Math.random()*m.length)]}()</script>
 
   <div class="page" id="page-login"><div class="login-page">
     <div class="login-logo">&#x1f4da;</div><div class="login-title">AnkiMaster</div>
@@ -317,9 +318,7 @@
   <div class="toast" id="toast"></div>
 
 <script>
-/* ========== Loading Messages ========== */
-const LOADING_MSGS=['今日も頑張ろう！','継続は力なり','努力は裏切らない','一歩一歩、確実に','昨日の自分を超えろ','やればできる！','合格まであと少し！','未来の自分に投資中','今日の積み重ねが明日の力','夢は逃げない、逃げるのは自分','大吉 ☀','中吉','小吉','吉','末吉（でも頑張れば大吉）','一期一会','七転八起','温故知新','日進月歩','千里の道も一歩から','石の上にも三年','初志貫徹','点滴穿石','文武両道','知行合一','コーヒーでも飲みながら','今日もえらい！','脳みそウォーミングアップ中','天才の朝は暗記から','暗記の鬼と化す','自分がライバル','絶対受かる','今日一番頑張ってる','SNSはほどほどに'];
-function showLoading(){const el=document.getElementById('loading-msg');el.textContent=LOADING_MSGS[Math.floor(Math.random()*LOADING_MSGS.length)];document.getElementById('loading').classList.remove('hidden')}
+function showLoading(){document.getElementById('loading').classList.remove('hidden')}
 
 /* ========== Firebase ========== */
 firebase.initializeApp({apiKey:"AIzaSyCFliHkmMAxap7386JJZb81o3dbI5uJFGU",authDomain:"ankimaster-395d5.firebaseapp.com",projectId:"ankimaster-395d5",storageBucket:"ankimaster-395d5.firebasestorage.app",messagingSenderId:"679225068510",appId:"1:679225068510:web:8acae35eb5ee7537d26b4f",measurementId:"G-PLHLN3NH45"});
