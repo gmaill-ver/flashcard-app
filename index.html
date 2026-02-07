@@ -166,7 +166,7 @@
   </style>
 </head>
 <body>
-  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:.9rem">読み込み中...</div></div>
+  <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:#888;font-size:.9rem" id="loading-msg">読み込み中...</div></div>
 
   <div class="page" id="page-login"><div class="login-page">
     <div class="login-logo">&#x1f4da;</div><div class="login-title">AnkiMaster</div>
@@ -317,6 +317,10 @@
   <div class="toast" id="toast"></div>
 
 <script>
+/* ========== Loading Messages ========== */
+const LOADING_MSGS=['今日も頑張ろう！','継続は力なり','努力は裏切らない','一歩一歩、確実に','昨日の自分を超えろ','やればできる！','合格まであと少し！','未来の自分に投資中','今日の積み重ねが明日の力','夢は逃げない、逃げるのは自分','大吉 ☀','中吉','小吉','吉','末吉（でも頑張れば大吉）','一期一会','七転八起','温故知新','日進月歩','千里の道も一歩から','石の上にも三年','初志貫徹','点滴穿石','文武両道','知行合一','コーヒーでも飲みながら','今日もえらい！','脳みそウォーミングアップ中','天才の朝は暗記から','暗記の鬼と化す','自分がライバル','絶対受かる','今日一番頑張ってる','SNSはほどほどに'];
+function showLoading(){const el=document.getElementById('loading-msg');el.textContent=LOADING_MSGS[Math.floor(Math.random()*LOADING_MSGS.length)];document.getElementById('loading').classList.remove('hidden')}
+
 /* ========== Firebase ========== */
 firebase.initializeApp({apiKey:"AIzaSyCFliHkmMAxap7386JJZb81o3dbI5uJFGU",authDomain:"ankimaster-395d5.firebaseapp.com",projectId:"ankimaster-395d5",storageBucket:"ankimaster-395d5.firebasestorage.app",messagingSenderId:"679225068510",appId:"1:679225068510:web:8acae35eb5ee7537d26b4f",measurementId:"G-PLHLN3NH45"});
 const auth=firebase.auth(),db=firebase.firestore();
@@ -369,7 +373,7 @@ document.getElementById('google-login-btn').addEventListener('click',async()=>{t
 document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){document.getElementById('loading').classList.remove('hidden');await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home')}
+async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home')}
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
@@ -378,9 +382,9 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
-    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){document.getElementById('loading').classList.remove('hidden');await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
   }
 }
@@ -453,7 +457,7 @@ async function loadPublicDecks(){
 }
 
 async function studyPublicDeck(id){
-  document.getElementById('loading').classList.remove('hidden');
+  showLoading();
   try{
     const doc=await db.collection('publicDecks').doc(id).get();
     const snap=await db.collection('publicDecks').doc(id).collection('cards').orderBy('order').get();
@@ -468,7 +472,7 @@ async function studyPublicDeck(id){
 async function copyPublicDeck(id){
   if(isGuest||!currentUser){showToast('コピーするにはログインしてください');return}
   if(!confirm('このデッキをマイデッキにコピーしますか？'))return;
-  document.getElementById('loading').classList.remove('hidden');
+  showLoading();
   try{
     const doc=await db.collection('publicDecks').doc(id).get();
     const d=doc.data();
@@ -669,7 +673,7 @@ document.getElementById('autoplay-settings-row').addEventListener('click',()=>{c
 document.getElementById('reset-group-row').addEventListener('click',()=>{const s=document.getElementById('reset-group-section');s.style.display=s.style.display==='none'?'block':'none'});
 document.getElementById('howto-row').addEventListener('click',()=>{const s=document.getElementById('howto-section');s.style.display=s.style.display==='none'?'block':'none'});
 document.getElementById('csv-import-row').addEventListener('click',()=>{const s=document.getElementById('csv-import-section');if(s.style.display==='none'){s.style.display='block';document.getElementById('csv-import-deck').innerHTML=decks.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}else{s.style.display='none'}});
-document.getElementById('csv-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const dn=document.getElementById('csv-import-deck').value;if(!dn){showToast('デッキを選択してください');return}document.getElementById('settings-modal').classList.remove('active');document.getElementById('loading').classList.remove('hidden');try{const text=await f.text();const lines=text.split(/\r?\n/).filter(l=>l.trim());let count=0;for(const line of lines){const p=parseCSVLine(line);if(p.length>=2&&p[0].trim()&&p[1].trim()){await addCard({question:p[0].trim(),answer:p[1].trim(),deck:dn,subdeck:'',lastRating:null,created:new Date().toISOString()},true);count++}}if(count){const dk=getDeck(dn);if(dk)dk.cardCount=(dk.cardCount||0)+count;if(!isGuest)cards=[];await saveDecks();renderDeckList()}showToast(`${count}問をインポートしました`)}catch(err){console.error(err);showToast('インポート失敗')}document.getElementById('loading').classList.add('hidden');e.target.value=''});
+document.getElementById('csv-file').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const dn=document.getElementById('csv-import-deck').value;if(!dn){showToast('デッキを選択してください');return}document.getElementById('settings-modal').classList.remove('active');showLoading();try{const text=await f.text();const lines=text.split(/\r?\n/).filter(l=>l.trim());let count=0;for(const line of lines){const p=parseCSVLine(line);if(p.length>=2&&p[0].trim()&&p[1].trim()){await addCard({question:p[0].trim(),answer:p[1].trim(),deck:dn,subdeck:'',lastRating:null,created:new Date().toISOString()},true);count++}}if(count){const dk=getDeck(dn);if(dk)dk.cardCount=(dk.cardCount||0)+count;if(!isGuest)cards=[];await saveDecks();renderDeckList()}showToast(`${count}問をインポートしました`)}catch(err){console.error(err);showToast('インポート失敗')}document.getElementById('loading').classList.add('hidden');e.target.value=''});
 document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;if(isGuest){for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null}LS.save('fc_cards',cards)}else{const snap=await cardsCol().get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{incorrectCount:0,correctCount:0,lastRating:null}));await batch.commit()}}for(const dk of decks){dk.ratings={incorrect:0,correct:0,understood:0}}await saveDecks();showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
 document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
