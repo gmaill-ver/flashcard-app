@@ -524,7 +524,7 @@ function renderStudyCard(){
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';dtW.style.display='none'}
 }
 
-document.getElementById('anki-card').addEventListener('click',e=>{if(e.target.closest('#anki-detail-toggle'))return;if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}});
+document.getElementById('anki-card').addEventListener('click',e=>{if(e.target.closest('#anki-detail-wrap'))return;if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}});
 document.getElementById('anki-detail-toggle').addEventListener('click',()=>{const d=document.getElementById('anki-detail'),t=document.getElementById('anki-detail-toggle');if(d.style.display==='none'){d.style.display='block';t.textContent='閉じる ▲'}else{d.style.display='none';t.textContent='詳しく ▼'}});
 
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
