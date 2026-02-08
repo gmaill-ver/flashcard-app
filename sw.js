@@ -1,5 +1,5 @@
-const CACHE_NAME = 'ultra-anki-v2';
-const ASSETS = ['/', '/index.html', '/icon-192.png', '/icon-512.png'];
+const CACHE_NAME = 'ultra-anki-v3';
+const ASSETS = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/ogp.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));

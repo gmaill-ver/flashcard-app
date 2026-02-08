@@ -4,6 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ウルトラAnki</title>
+  <meta name="description" content="資格試験向けフラッシュカード学習アプリ。いつでもどこでもスマホで暗記学習。">
+  <meta property="og:title" content="ウルトラAnki">
+  <meta property="og:description" content="資格試験向けフラッシュカード学習アプリ。いつでもどこでもスマホで暗記学習。">
+  <meta property="og:image" content="https://flash-cardapp.netlify.app/ogp.png">
+  <meta property="og:url" content="https://flash-cardapp.netlify.app">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ウルトラAnki">
+  <meta name="twitter:description" content="資格試験向けフラッシュカード学習アプリ。いつでもどこでもスマホで暗記学習。">
+  <meta name="twitter:image" content="https://flash-cardapp.netlify.app/ogp.png">
   <link rel="icon" href="icon-192.png">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2196f3">
@@ -240,7 +250,7 @@
         <div style="display:flex;gap:8px"><button type="submit" class="btn btn-blue" style="flex:1" id="card-submit-btn">追加</button><button type="button" class="btn btn-gray" id="card-cancel-btn" style="display:none">キャンセル</button></div>
       </form>
     </div>
-    <div class="card-list-section"><h3 id="manage-card-count">カード (0枚)</h3><div id="manage-subdeck-filter" style="margin-bottom:10px"></div><div id="manage-card-list"></div></div>
+    <div class="card-list-section"><h3 id="manage-card-count">カード (0枚)</h3><div id="manage-subdeck-filter" style="margin-bottom:10px"></div><input type="text" id="manage-search" placeholder="カードを検索..." style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;margin-bottom:10px;background:#fff"><div id="manage-card-list"></div><div id="manage-pagination" style="display:flex;justify-content:center;align-items:center;gap:12px;margin-top:12px"></div></div>
   </div>
 
   <!-- 統計 -->
@@ -334,7 +344,8 @@ let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null;
-let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='';
+let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='',manageSearch='',managePage=0;
+const MANAGE_PER_PAGE=50;
 let dailyStats={},statsChart=null,statsRange='day',statsFilterDeck='';
 
 /* ========== LS ========== */
@@ -387,7 +398,7 @@ async function navigateTo(page,data){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
-    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
   }
 }
@@ -629,18 +640,23 @@ function renderManageSubdecks(){
 }
 document.getElementById('add-subdeck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-subdeck-input'),n=i.value.trim(),dk=getDeck(currentDeck);if(n&&dk&&!dk.subdecks.includes(n)){dk.subdecks.push(n);await saveDecks();i.value='';renderManageSubdecks();renderManageList();showToast(`サブデッキ「${n}」を追加`)}});
 document.getElementById('new-subdeck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-subdeck-btn').click()}});
+document.getElementById('manage-search').addEventListener('input',e=>{manageSearch=e.target.value.trim().toLowerCase();managePage=0;renderManageList()});
 
 function renderManageList(){
   try{
   const dc=deckCards(currentDeck);document.getElementById('manage-card-count').textContent=`カード (${dc.length}枚)`;
-  const el=document.getElementById('manage-card-list');const fEl=document.getElementById('manage-subdeck-filter');
+  const el=document.getElementById('manage-card-list');const fEl=document.getElementById('manage-subdeck-filter');const pgEl=document.getElementById('manage-pagination');
   const deck=getDeck(currentDeck),sds=deck?.subdecks||[];
-  if(sds.length>0){fEl.innerHTML=`<select id="subdeck-filter-select" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;color:#555"><option value="">全て</option>${sds.map(s=>`<option value="${esc(s)}"${manageSubdeckFilter===s?' selected':''}>${esc(s)}</option>`).join('')}</select>`;document.getElementById('subdeck-filter-select').addEventListener('change',e=>{manageSubdeckFilter=e.target.value;renderManageList()})}else{fEl.innerHTML=''}
-  if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';return}
-  const filtered=manageSubdeckFilter?dc.filter(c=>c.subdeck===manageSubdeckFilter):dc;
-  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>該当するカードがありません</p></div>';return}
-  el.innerHTML=filtered.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
+  if(sds.length>0){fEl.innerHTML=`<select id="subdeck-filter-select" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;color:#555"><option value="">全て</option>${sds.map(s=>`<option value="${esc(s)}"${manageSubdeckFilter===s?' selected':''}>${esc(s)}</option>`).join('')}</select>`;document.getElementById('subdeck-filter-select').addEventListener('change',e=>{manageSubdeckFilter=e.target.value;managePage=0;renderManageList()})}else{fEl.innerHTML=''}
+  if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';pgEl.innerHTML='';return}
+  let filtered=manageSubdeckFilter?dc.filter(c=>c.subdeck===manageSubdeckFilter):dc;
+  if(manageSearch){filtered=filtered.filter(c=>(c.question||'').toLowerCase().includes(manageSearch)||(c.answer||'').toLowerCase().includes(manageSearch))}
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>該当するカードがありません</p></div>';pgEl.innerHTML='';return}
+  const totalPages=Math.ceil(filtered.length/MANAGE_PER_PAGE);if(managePage>=totalPages)managePage=totalPages-1;
+  const pageItems=filtered.slice(managePage*MANAGE_PER_PAGE,(managePage+1)*MANAGE_PER_PAGE);
+  el.innerHTML=pageItems.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
   el.querySelectorAll('.card-item-btn').forEach(b=>{b.addEventListener('click',()=>{if(b.dataset.act==='edit')editCardAction(b.dataset.id);if(b.dataset.act==='del')deleteCardAction(b.dataset.id)})});
+  if(totalPages>1){pgEl.innerHTML=`<button class="btn btn-outline btn-sm" id="pg-prev" ${managePage===0?'disabled':''}>&lt; 前</button><span style="font-size:.85rem;color:#666">${managePage+1} / ${totalPages}</span><button class="btn btn-outline btn-sm" id="pg-next" ${managePage>=totalPages-1?'disabled':''}> 次 &gt;</button>`;document.getElementById('pg-prev').addEventListener('click',()=>{if(managePage>0){managePage--;renderManageList();document.getElementById('manage-card-count').scrollIntoView({behavior:'smooth'})}});document.getElementById('pg-next').addEventListener('click',()=>{if(managePage<totalPages-1){managePage++;renderManageList();document.getElementById('manage-card-count').scrollIntoView({behavior:'smooth'})}})}else{pgEl.innerHTML=''}
   }catch(e){console.error('renderManageList error:',e)}
 }
 
