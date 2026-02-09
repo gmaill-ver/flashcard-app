@@ -60,6 +60,30 @@
     .home-tab.active{color:#2196f3;border-bottom-color:#2196f3}
     .home-section{display:none}.home-section.active{display:block}
 
+    /* Claude Chat */
+    .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px;background:#f9fafb;border-radius:8px;min-height:300px;max-height:calc(100vh - 260px)}
+    .chat-message{display:flex;gap:8px;max-width:85%;animation:chatIn .3s ease-out}
+    .chat-message.user{align-self:flex-end;flex-direction:row-reverse}
+    .chat-message.assistant{align-self:flex-start}
+    .chat-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
+    .chat-message.user .chat-avatar{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff}
+    .chat-message.assistant .chat-avatar{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff}
+    .chat-bubble{padding:10px 14px;border-radius:12px;font-size:.85rem;line-height:1.5;word-break:break-word}
+    .chat-message.user .chat-bubble{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border-bottom-right-radius:4px}
+    .chat-message.assistant .chat-bubble{background:#fff;color:#333;border:1px solid #e5e7eb;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .chat-bubble pre{background:#1f2937;color:#e5e7eb;padding:8px 10px;border-radius:6px;overflow-x:auto;font-size:.8rem;margin:6px 0}
+    .chat-bubble code{font-family:monospace}
+    .chat-input-wrap{display:flex;gap:8px;padding-top:8px}
+    .chat-input{flex:1;border:1px solid #ddd;border-radius:10px;padding:10px 14px;font-size:.85rem;resize:none;outline:none;font-family:inherit;transition:border-color .2s}
+    .chat-input:focus{border-color:#3b82f6}
+    .chat-send{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:.85rem;cursor:pointer;font-weight:600;white-space:nowrap}
+    .chat-send:disabled{opacity:.5;cursor:not-allowed}
+    .chat-loading span{display:inline-block;width:6px;height:6px;background:#aaa;border-radius:50%;margin:0 2px;animation:bounce .6s infinite alternate}
+    .chat-loading span:nth-child(2){animation-delay:.2s}
+    .chat-loading span:nth-child(3){animation-delay:.4s}
+    @keyframes chatIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes bounce{to{transform:translateY(-6px)}}
+
     .deck-list{display:flex;flex-direction:column;gap:4px}
     .deck-card{background:#fff;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:box-shadow .2s,transform .15s;border:1px solid #e0e0e0}
     .deck-card:hover{box-shadow:0 2px 12px rgba(0,0,0,.08);transform:translateY(-1px)}
@@ -206,10 +230,22 @@
   <div class="page" id="page-home">
     <div class="home-tabs">
       <button class="home-tab active" data-tab="my" id="tab-my">マイデッキ</button>
+      <button class="home-tab" data-tab="chat" id="tab-chat">AIチャット</button>
       <button class="home-tab" data-tab="public" id="tab-public">公開デッキ</button>
     </div>
     <div class="home-section active" id="section-my">
       <div class="deck-list" id="deck-list"></div>
+    </div>
+    <div class="home-section" id="section-chat">
+      <div style="display:flex;flex-direction:column;height:calc(100vh - 180px)">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-message assistant"><div class="chat-avatar">🤖</div><div class="chat-bubble">こんにちは！資格試験の学習をサポートします。質問があればどうぞ！</div></div>
+        </div>
+        <div class="chat-input-wrap">
+          <textarea class="chat-input" id="chat-input" placeholder="メッセージを入力..." rows="2"></textarea>
+          <button class="chat-send" id="chat-send-btn">送信</button>
+        </div>
+      </div>
     </div>
     <div class="home-section" id="section-public">
       <div id="public-deck-list"></div>
@@ -410,7 +446,8 @@ function setHomeTab(tab){
   activeHomeTab=tab;
   document.querySelectorAll('.home-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   document.querySelectorAll('.home-section').forEach(s=>s.classList.remove('active'));
-  document.getElementById(tab==='my'?'section-my':'section-public').classList.add('active');
+  const secId=tab==='my'?'section-my':tab==='chat'?'section-chat':'section-public';
+  document.getElementById(secId).classList.add('active');
   if(tab==='public')loadPublicDecks();
 }
 document.querySelectorAll('.home-tab').forEach(t=>t.addEventListener('click',()=>setHomeTab(t.dataset.tab)));
@@ -718,6 +755,63 @@ document.getElementById('csv-file').addEventListener('change',async e=>{const f=
 document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;if(isGuest){for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null}LS.save('fc_cards',cards)}else{const snap=await cardsCol().get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{incorrectCount:0,correctCount:0,lastRating:null}));await batch.commit()}}for(const dk of decks){dk.ratings={incorrect:0,correct:0,understood:0}}await saveDecks();showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
 document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
+
+/* ========== Claude Chat ========== */
+let chatHistory=[];
+function addChatMsg(role,content){
+  const el=document.getElementById('chat-messages');
+  const d=document.createElement('div');
+  d.className='chat-message '+role;
+  const avatar=role==='user'?'👤':'🤖';
+  let html=content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  html=html.replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
+  html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
+  html=html.replace(/\n/g,'<br>');
+  d.innerHTML=`<div class="chat-avatar">${avatar}</div><div class="chat-bubble">${html}</div>`;
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+function showChatLoading(){
+  const el=document.getElementById('chat-messages');
+  const d=document.createElement('div');
+  d.className='chat-message assistant';d.id='chat-loading';
+  d.innerHTML='<div class="chat-avatar">🤖</div><div class="chat-bubble chat-loading"><span></span><span></span><span></span></div>';
+  el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+function removeChatLoading(){const e=document.getElementById('chat-loading');if(e)e.remove()}
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const btn=document.getElementById('chat-send-btn');
+  const msg=input.value.trim();
+  if(!msg)return;
+  input.value='';btn.disabled=true;
+  addChatMsg('user',msg);
+  chatHistory.push({role:'user',content:msg});
+  showChatLoading();
+  try{
+    const res=await fetch('https://chatwithclaude-ydgcevv45q-uc.a.run.app',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:chatHistory,userId:currentUser?currentUser.uid:null})
+    });
+    const data=await res.json();
+    removeChatLoading();
+    if(data.content&&data.content[0]){
+      const text=data.content[0].text;
+      chatHistory.push({role:'assistant',content:text});
+      addChatMsg('assistant',text);
+    }else{
+      addChatMsg('assistant','エラーが発生しました。もう一度お試しください。');
+    }
+  }catch(e){
+    removeChatLoading();
+    addChatMsg('assistant','通信エラーが発生しました。');
+  }
+  btn.disabled=false;input.focus();
+}
+document.getElementById('chat-send-btn').addEventListener('click',sendChat);
+document.getElementById('chat-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}
+});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
