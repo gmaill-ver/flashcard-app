@@ -601,7 +601,8 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
   studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
   studyCards=getStudyPool();if(studyIndex>=studyCards.length)studyIndex=0;
-  renderStudyFilters();renderStudyCard();
+  renderStudyFilters();
+  if(isPlaying){if(playTimer)clearTimeout(playTimer);autoPlayNext()}else{renderStudyCard()}
 })});
 
 document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){studySort='shuffle';LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;const sel=document.getElementById('study-sort-select');if(sel)sel.value='shuffle';renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
