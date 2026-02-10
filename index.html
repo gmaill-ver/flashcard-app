@@ -61,7 +61,12 @@
     .home-section{display:none}.home-section.active{display:block}
 
     /* Claude Chat */
-    .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px;background:#f9fafb;border-radius:8px;min-height:300px;max-height:calc(100vh - 260px)}
+    .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px;background:#f9fafb;border-radius:8px;min-height:150px;max-height:250px}
+    .study-chat{margin-top:16px}
+    .study-chat-toggle{text-align:center;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:.85rem;color:#2196f3;font-weight:500;transition:all .2s}
+    .study-chat-toggle:hover{background:#f0f7ff}
+    .study-chat-toggle.open{border-radius:10px 10px 0 0;border-bottom:none}
+    .study-chat-body{border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:10px;background:#fff}
     .chat-message{display:flex;gap:8px;max-width:85%;animation:chatIn .3s ease-out}
     .chat-message.user{align-self:flex-end;flex-direction:row-reverse}
     .chat-message.assistant{align-self:flex-start}
@@ -230,22 +235,10 @@
   <div class="page" id="page-home">
     <div class="home-tabs">
       <button class="home-tab active" data-tab="my" id="tab-my">マイデッキ</button>
-      <button class="home-tab" data-tab="chat" id="tab-chat" style="display:none">AIチャット</button>
       <button class="home-tab" data-tab="public" id="tab-public">公開デッキ</button>
     </div>
     <div class="home-section active" id="section-my">
       <div class="deck-list" id="deck-list"></div>
-    </div>
-    <div class="home-section" id="section-chat">
-      <div style="display:flex;flex-direction:column;height:calc(100vh - 180px)">
-        <div class="chat-messages" id="chat-messages">
-          <div class="chat-message assistant"><div class="chat-avatar">🤖</div><div class="chat-bubble">こんにちは！資格試験の学習をサポートします。質問があればどうぞ！</div></div>
-        </div>
-        <div class="chat-input-wrap">
-          <textarea class="chat-input" id="chat-input" placeholder="メッセージを入力..." rows="2"></textarea>
-          <button class="chat-send" id="chat-send-btn">送信</button>
-        </div>
-      </div>
     </div>
     <div class="home-section" id="section-public">
       <div id="public-deck-list"></div>
@@ -271,6 +264,16 @@
       <button class="anki-rating-btn correct" data-rating="correct">◯</button>
       <button class="anki-rating-btn incorrect" data-rating="incorrect">×</button>
       <button class="anki-rating-btn understood" data-rating="understood">&#x1f44d;</button>
+    </div>
+    <div class="study-chat" id="study-chat" style="display:none">
+      <div class="study-chat-toggle" id="study-chat-toggle">🤖 AIに質問する</div>
+      <div class="study-chat-body" id="study-chat-body" style="display:none">
+        <div class="chat-messages" id="chat-messages" style="min-height:150px;max-height:250px"></div>
+        <div class="chat-input-wrap">
+          <textarea class="chat-input" id="chat-input" placeholder="このカードについて質問..." rows="2"></textarea>
+          <button class="chat-send" id="chat-send-btn">送信</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -423,7 +426,7 @@ document.getElementById('google-login-btn').addEventListener('click',async()=>{t
 document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateChatTabVisibility();navigateTo('home')}
+async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home')}
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
@@ -432,7 +435,7 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
@@ -446,7 +449,7 @@ function setHomeTab(tab){
   activeHomeTab=tab;
   document.querySelectorAll('.home-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   document.querySelectorAll('.home-section').forEach(s=>s.classList.remove('active'));
-  const secId=tab==='my'?'section-my':tab==='chat'?'section-chat':'section-public';
+  const secId=tab==='my'?'section-my':'section-public';
   document.getElementById(secId).classList.add('active');
   if(tab==='public')loadPublicDecks();
 }
@@ -781,7 +784,8 @@ function showChatLoading(){
 }
 function removeChatLoading(){const e=document.getElementById('chat-loading');if(e)e.remove()}
 const CHAT_ALLOWED_EMAIL='u.t.o0911@gmail.com';
-function updateChatTabVisibility(){const tab=document.getElementById('tab-chat');if(currentUser&&currentUser.email===CHAT_ALLOWED_EMAIL){tab.style.display=''}else{tab.style.display='none';if(activeHomeTab==='chat')setHomeTab('my')}}
+function updateStudyChatVisibility(){const el=document.getElementById('study-chat');if(currentUser&&currentUser.email===CHAT_ALLOWED_EMAIL){el.style.display=''}else{el.style.display='none'}}
+function resetStudyChat(){chatHistory=[];const el=document.getElementById('chat-messages');if(el)el.innerHTML=''}
 async function sendChat(){
   const input=document.getElementById('chat-input');
   const btn=document.getElementById('chat-send-btn');
@@ -790,7 +794,12 @@ async function sendChat(){
   if(!msg)return;
   input.value='';btn.disabled=true;
   addChatMsg('user',msg);
-  chatHistory.push({role:'user',content:msg});
+  let userMsg=msg;
+  if(chatHistory.length===0&&studyCards&&studyCards[studyIndex]){
+    const c=studyCards[studyIndex];
+    userMsg=`【現在のカード】問題: ${c.question} / 答え: ${c.answer}${c.detail?' / 詳細: '+c.detail:''}\n\n${msg}`;
+  }
+  chatHistory.push({role:'user',content:userMsg});
   showChatLoading();
   try{
     const res=await fetch('https://chatwithclaude-ydgcevv45q-uc.a.run.app',{
@@ -815,6 +824,12 @@ async function sendChat(){
 document.getElementById('chat-send-btn').addEventListener('click',sendChat);
 document.getElementById('chat-input').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}
+});
+document.getElementById('study-chat-toggle').addEventListener('click',()=>{
+  const body=document.getElementById('study-chat-body');
+  const toggle=document.getElementById('study-chat-toggle');
+  if(body.style.display==='none'){body.style.display='';toggle.classList.add('open');toggle.textContent='🤖 チャットを閉じる'}
+  else{body.style.display='none';toggle.classList.remove('open');toggle.textContent='🤖 AIに質問する'}
 });
 
 /* ========== Util ========== */
