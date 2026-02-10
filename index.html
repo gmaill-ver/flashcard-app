@@ -266,7 +266,7 @@
       <button class="anki-rating-btn understood" data-rating="understood">&#x1f44d;</button>
     </div>
     <div class="study-chat" id="study-chat" style="display:none">
-      <div class="study-chat-toggle" id="study-chat-toggle">🤖 AIに質問する</div>
+      <div class="study-chat-toggle" id="study-chat-toggle">😏 AIに質問する</div>
       <div class="study-chat-body" id="study-chat-body" style="display:none">
         <div class="chat-messages" id="chat-messages" style="min-height:150px;max-height:250px"></div>
         <div class="chat-input-wrap">
@@ -766,7 +766,7 @@ function addChatMsg(role,content){
   const el=document.getElementById('chat-messages');
   const d=document.createElement('div');
   d.className='chat-message '+role;
-  const avatar=role==='user'?'👤':'🤖';
+  const avatar=role==='user'?'👤':'😏';
   let html=content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   html=html.replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
   html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
@@ -779,7 +779,7 @@ function showChatLoading(){
   const el=document.getElementById('chat-messages');
   const d=document.createElement('div');
   d.className='chat-message assistant';d.id='chat-loading';
-  d.innerHTML='<div class="chat-avatar">🤖</div><div class="chat-bubble chat-loading"><span></span><span></span><span></span></div>';
+  d.innerHTML='<div class="chat-avatar">😏</div><div class="chat-bubble chat-loading"><span></span><span></span><span></span></div>';
   el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
 function removeChatLoading(){const e=document.getElementById('chat-loading');if(e)e.remove()}
@@ -828,8 +828,8 @@ document.getElementById('chat-input').addEventListener('keydown',e=>{
 document.getElementById('study-chat-toggle').addEventListener('click',()=>{
   const body=document.getElementById('study-chat-body');
   const toggle=document.getElementById('study-chat-toggle');
-  if(body.style.display==='none'){body.style.display='';toggle.classList.add('open');toggle.textContent='🤖 チャットを閉じる'}
-  else{body.style.display='none';toggle.classList.remove('open');toggle.textContent='🤖 AIに質問する'}
+  if(body.style.display==='none'){body.style.display='';toggle.classList.add('open');toggle.textContent='😏 チャットを閉じる'}
+  else{body.style.display='none';toggle.classList.remove('open');toggle.textContent='😏 AIに質問する'}
 });
 
 /* ========== Util ========== */
