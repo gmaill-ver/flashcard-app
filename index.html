@@ -230,7 +230,7 @@
   <div class="page" id="page-home">
     <div class="home-tabs">
       <button class="home-tab active" data-tab="my" id="tab-my">マイデッキ</button>
-      <button class="home-tab" data-tab="chat" id="tab-chat">AIチャット</button>
+      <button class="home-tab" data-tab="chat" id="tab-chat" style="display:none">AIチャット</button>
       <button class="home-tab" data-tab="public" id="tab-public">公開デッキ</button>
     </div>
     <div class="home-section active" id="section-my">
@@ -423,7 +423,7 @@ document.getElementById('google-login-btn').addEventListener('click',async()=>{t
 document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home')}
+async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateChatTabVisibility();navigateTo('home')}
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
@@ -780,9 +780,12 @@ function showChatLoading(){
   el.appendChild(d);el.scrollTop=el.scrollHeight;
 }
 function removeChatLoading(){const e=document.getElementById('chat-loading');if(e)e.remove()}
+const CHAT_ALLOWED_EMAIL='u.t.o0911@gmail.com';
+function updateChatTabVisibility(){const tab=document.getElementById('tab-chat');if(currentUser&&currentUser.email===CHAT_ALLOWED_EMAIL){tab.style.display=''}else{tab.style.display='none';if(activeHomeTab==='chat')setHomeTab('my')}}
 async function sendChat(){
   const input=document.getElementById('chat-input');
   const btn=document.getElementById('chat-send-btn');
+  if(!currentUser||currentUser.email!==CHAT_ALLOWED_EMAIL){showToast('この機能は利用できません');return}
   const msg=input.value.trim();
   if(!msg)return;
   input.value='';btn.disabled=true;
