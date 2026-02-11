@@ -422,7 +422,7 @@ function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原�
 async function seedFS(){const ss=[{question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];for(const s of ss){const r=await cardsCol().add(s);cards.push({id:r.id,...s})}}
 
 async function seedKenpo(){
-const KEY='fc_kenpo_seeded_v1';if(localStorage.getItem(KEY))return;if(isGuest)return;
+const KEY='fc_kenpo_seeded_v1';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser||currentUser.email!==CHAT_ALLOWED_EMAIL)return;
 const DECK='憲法条文';if(decks.find(d=>d.name===DECK))return;
 decks.push({name:DECK,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
 const kc=[
