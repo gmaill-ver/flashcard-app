@@ -777,6 +777,7 @@ function renderManageList(){
   if(!dc.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>カードがまだありません</p></div>';pgEl.innerHTML='';return}
   let filtered=manageSubdeckFilter?dc.filter(c=>c.subdeck===manageSubdeckFilter):dc;
   if(manageSearch){filtered=filtered.filter(c=>(c.question||'').toLowerCase().includes(manageSearch)||(c.answer||'').toLowerCase().includes(manageSearch))}
+  filtered.sort((a,b)=>{const na=(a.question||'').match(/(\d+)/),nb=(b.question||'').match(/(\d+)/);if(na&&nb)return parseInt(na[1])-parseInt(nb[1]);if(na)return -1;if(nb)return 1;return(a.question||'').localeCompare(b.question||'','ja')});
   if(!filtered.length){el.innerHTML='<div class="empty-state"><p>該当するカードがありません</p></div>';pgEl.innerHTML='';return}
   const totalPages=Math.ceil(filtered.length/MANAGE_PER_PAGE);if(managePage>=totalPages)managePage=totalPages-1;
   const pageItems=filtered.slice(managePage*MANAGE_PER_PAGE,(managePage+1)*MANAGE_PER_PAGE);
