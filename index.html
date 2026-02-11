@@ -480,13 +480,38 @@ await saveDecks();
 localStorage.setItem(KEY,'1');
 console.log('憲法条文デッキ: '+kc.length+'枚のカードを追加しました');
 }
+async function seedKenpoV2(){
+const KEY='fc_kenpo_seeded_v2';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser||currentUser.email!==CHAT_ALLOWED_EMAIL)return;
+const DECK='憲法条文';const dk=getDeck(DECK);if(!dk)return;
+const extra=[
+{q:'憲法2条　皇位の継承',a:'皇位は世襲のものであり、国会の議決した皇室典範の定めるところにより継承する。',d:'天皇の地位は世襲制。継承順序等は皇室典範（法律）で定める。皇室典範は国会が議決する法律であり、旧憲法下の「皇室の家法」とは性質が異なる。'},
+{q:'憲法3条　天皇の国事行為と内閣の助言承認',a:'天皇の国事に関するすべての行為には内閣の助言と承認を必要とし、内閣がその責任を負う。',d:'天皇は自らの判断で国事行為を行えず、必ず内閣の助言と承認が必要。責任は内閣が負い、天皇は政治的に無答責。象徴天皇制の核心的規定。'},
+{q:'憲法4条　天皇の権能の限界',a:'天皇は憲法の定める国事に関する行為のみを行い、国政に関する権能を有しない。',d:'天皇の行為は国事行為に限定され、政治的権能は一切持たない。国事行為は7条に列挙（法律の公布、国会の召集、衆議院の解散、栄典の授与等）。公的行為の可否が論点。'},
+{q:'憲法5条　摂政',a:'皇室典範の定めるところにより摂政を置くときは、摂政は天皇の名でその国事に関する行為を行う。',d:'天皇が未成年や重病等の場合に摂政を置く。摂政は天皇に代わって国事行為を行うが、あくまで天皇の名で行う。摂政にも3条の助言と承認が適用される。'},
+{q:'憲法34条　拘留・拘禁の要件',a:'何人も正当な理由がなければ拘留・拘禁されず、要求があれば直ちにその理由を公開の法廷で示さなければならない。',d:'身体の自由の保障。拘留・拘禁には正当な理由が必要。被拘禁者には理由開示請求権がある（人身保護法と関連）。弁護人依頼権の告知も必要。'},
+{q:'憲法42条　両院制',a:'国会は衆議院及び参議院の両議院で構成する。',d:'二院制を採用。衆議院は民意を直接反映（任期4年・解散あり）、参議院は慎重審議の役割（任期6年・解散なし・3年ごと半数改選）。両院の権限の違いが頻出。'},
+{q:'憲法44条　選挙人の資格',a:'両議院の議員及びその選挙人の資格は法律で定める。人種・信条・性別・社会的身分・門地・教育・財産・収入による差別禁止。',d:'選挙権の平等を具体化。公職選挙法で具体的資格を規定。14条の平等原則を選挙の場面で再確認した規定。在外邦人の選挙権制限が違憲とされた判例（最大判平17.9.14）が重要。'},
+{q:'憲法55条　資格争訟の裁判',a:'両議院は各々その議員の資格に関する争訟を裁判する。ただし議員の議席を失わせるには出席議員の3分の2以上の多数が必要。',d:'議院自律権の一つ。議員資格の判断は各議院が自ら行う（司法権の例外）。議席剥奪には3分の2の特別多数が必要で少数派保護を図る。'},
+{q:'憲法56条　定足数・表決',a:'両議院は各々その総議員の3分の1以上の出席がなければ議事を開き議決できない。議事は出席議員の過半数で決する。',d:'定足数は総議員の3分の1。表決は原則として出席議員の過半数（過半数主義）。可否同数の場合は議長が決する。特別多数を要する場合（憲法改正・除名等）は別途規定。'},
+{q:'憲法78条　裁判官の身分保障',a:'裁判官は裁判により心身の故障で職務不能と決定された場合を除き、公の弾劾によらなければ罷免されない。減俸もされない。',d:'司法権の独立を担保するための身分保障。罷免は弾劾裁判（64条）または心身故障の裁判のみ。在任中の減俸禁止。下級裁判所裁判官は任期10年で再任可。'},
+{q:'憲法83条　財政民主主義',a:'国の財政を処理する権限は国会の議決に基づいて行使しなければならない。',d:'財政民主主義（財政国会中心主義）の原則。国の収入支出はすべて国会のコントロール下に置かれる。予算の議決（60条）・決算の審査（90条）と合わせて財政の民主的統制を実現。'},
+{q:'憲法84条　租税法律主義',a:'あらたに租税を課し又は現行の租税を変更するには法律又は法律の定める条件によることを必要とする。',d:'課税には必ず法律の根拠が必要（租税法律主義）。行政書士の税務業務にも直結する重要原則。旭川市国民健康保険条例事件（最大判平18.3.1）で条例による課税も84条の趣旨が及ぶとした。'},
+{q:'憲法93条　地方議会・首長の直接選挙',a:'第1項：地方公共団体には議事機関として議会を設置。第2項：首長・議員は住民が直接選挙。',d:'地方自治における住民自治の具体化。首長（知事・市長等）と議会議員の両方を住民が直接選挙する二元代表制。国の議院内閣制とは異なる仕組み。'}
+];
+const now=new Date().toISOString();
+for(const c of extra){await addCard({question:c.q,answer:c.a,detail:c.d,deck:DECK,subdeck:'',lastRating:null,created:now},true)}
+dk.cardCount=(dk.cardCount||0)+extra.length;
+await saveDecks();
+localStorage.setItem(KEY,'1');
+console.log('憲法条文デッキ追加: '+extra.length+'枚');
+}
 
 /* ========== Auth ========== */
 document.getElementById('google-login-btn').addEventListener('click',async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('ログイン失敗')}});
 document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();await seedKenpo();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home')}
+async function initApp(){showLoading();await loadData();await seedKenpo();await seedKenpoV2();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home')}
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
