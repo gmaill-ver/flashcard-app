@@ -227,7 +227,7 @@
     <div class="header-actions">
       <button class="header-icon-btn" id="stats-btn" title="統計">&#x1f4ca;</button>
       <button class="header-icon-btn" id="settings-btn" title="設定">&#x2699;</button>
-      <div class="header-user" id="header-user"><img id="header-avatar" style="width:100%;height:100%;object-fit:cover;display:none"><span id="header-user-icon" style="font-size:1.1rem">&#x1f464;</span></div>
+      <div class="header-user" id="header-user"><img id="header-avatar" style="width:100%;height:100%;object-fit:cover;display:none" onerror="this.style.display='none';document.getElementById('header-user-icon').style.display='block'"><span id="header-user-icon" style="font-size:1.1rem">&#x1f464;</span></div>
     </div>
   </div>
 
@@ -927,6 +927,7 @@ console.log('行政書士デッキ: '+gc.length+'枚のカードを追加しま�
 document.getElementById('google-login-btn').addEventListener('click',async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())}catch(e){if(e.code!=='auth/popup-closed-by-user')showToast('ログイン失敗')}});
 document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest=true;currentUser=null;initApp()});
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
+document.getElementById('header-user').addEventListener('click',async()=>{if(!confirm('ログアウトしますか？'))return;if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
 async function initApp(){showLoading();await loadData();await seedKenpo();await seedKenpoV2();await seedGyoseishoshi();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home')}
 
