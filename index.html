@@ -507,11 +507,13 @@ console.log('憲法条文デッキ追加: '+extra.length+'枚');
 }
 
 async function seedGyoseishoshi(){
-const KEY='fc_gyoseishoshi_v3';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser)return;
-const DECK='行政書士';const existGyo=decks.find(d=>d.name===DECK);if(existGyo&&(existGyo.cardCount||0)>0){localStorage.setItem(KEY,'1');return;}
+if(isGuest||!currentUser)return;
+const DECK='行政書士';
+try{const chk=await cardsCol().where('deck','==',DECK).limit(1).get();if(!chk.empty)return;}catch(e){console.error('seedGyoseishoshi check failed',e);return;}
 const SUBDECKS=['行政手続法','行政不服審査法','行政事件訴訟法'];
+const existGyo=decks.find(d=>d.name===DECK);
 if(!existGyo)decks.push({name:DECK,subdecks:SUBDECKS,publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
-else if(existGyo.subdecks.length===0)existGyo.subdecks=SUBDECKS;
+else{existGyo.subdecks=SUBDECKS;existGyo.cardCount=0;}
 const gc=[
 {q:'審査基準を定めることは行政庁の努力義務であるが、設定した場合には、これを公にしておく法的義務が課される。',a:'×',d:'審査基準の設定と公表は法的義務である。行政手続法5条1項で審査基準の設定は努力義務ではなく法的義務とされており、5条3項で公表も法的義務である。',s:'行政手続法'},
 {q:'審査基準を公にすることによって行政上特別の支障が生じる場合、行政庁が当該審査基準を公にしなかったとしても違法とはならない。',a:'○',d:'行政手続法5条3項で「行政上特別の支障があるときを除いて」審査基準を公にしなければならないとされており、例外にあたる場合には違法とならない。',s:'行政手続法'},
@@ -915,8 +917,9 @@ const gc=[
 const now=new Date().toISOString();
 for(let i=0;i<gc.length;i+=400){const batch=db.batch();gc.slice(i,i+400).forEach(c=>{const ref=cardsCol().doc();batch.set(ref,{question:c.q,answer:c.a,detail:c.d,deck:DECK,subdeck:c.s,lastRating:null,created:now})});await batch.commit()}
 const dk=getDeck(DECK);if(dk){dk.cardCount=gc.length;dk.ratings={incorrect:0,correct:0,understood:0};dk.subdecks=SUBDECKS;}
-await saveDecks();localStorage.setItem(KEY,'1');
+await saveDecks();
 showToast('行政書士デッキを追加しました（'+gc.length+'問）');
+renderDeckList();
 }
 
 async function cleanupKenpoDuplicates(){
