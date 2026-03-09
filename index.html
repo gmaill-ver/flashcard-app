@@ -326,6 +326,7 @@
     <div id="autoplay-settings-section" style="display:none;padding:4px 0">
       <div class="modal-row"><span>問題の表示時間（秒）</span><input type="number" id="cfg-q-delay" value="3" min="1" max="30"></div>
       <div class="modal-row"><span>答えの表示時間（秒）</span><input type="number" id="cfg-a-delay" value="3" min="1" max="30"></div>
+      <div class="modal-row"><span>解説をデフォルトで開く</span><input type="checkbox" id="cfg-auto-detail" style="width:20px;height:20px;cursor:pointer"></div>
     </div>
     <div class="modal-row" id="howto-row">&#x1f4d6; 使い方</div>
     <div id="howto-section" style="display:none;padding:12px 0;font-size:.82rem;color:#555;line-height:1.9">
@@ -382,7 +383,7 @@ db.enablePersistence().catch(()=>{});
 let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
-let isPlaying=false,playTimer=null,editingId=null,studySort=null;
+let isPlaying=false,playTimer=null,editingId=null,studySort=null,autoShowDetail=false;
 let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='',manageSearch='',managePage=0;
 const MANAGE_PER_PAGE=50;
 let dailyStats={},statsChart=null,statsRange='day',statsFilterDeck='';
@@ -953,7 +954,7 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
@@ -1106,7 +1107,7 @@ function renderStudyCard(){
   qE.textContent=card.question;aE.textContent=card.answer;
   const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
   rt.style.display='flex';
-  if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;dtE.style.display='none';dtT.textContent='詳しく ▼'}else{dtW.style.display='none'}}
+  if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;if(autoShowDetail){dtE.style.display='block';dtT.textContent='閉じる ▲'}else{dtE.style.display='none';dtT.textContent='詳しく ▼'}}else{dtW.style.display='none'}}
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';dtW.style.display='none'}
 }
 
@@ -1268,7 +1269,8 @@ document.getElementById('deck-ops-row').addEventListener('click',()=>{const s=do
 document.getElementById('deck-edit-btn').addEventListener('click',()=>{const name=document.getElementById('deck-ops-select').value;if(name){document.getElementById('settings-modal').classList.remove('active');navigateTo('manage',name)}});
 document.getElementById('deck-rename-btn').addEventListener('click',()=>{const name=document.getElementById('deck-ops-select').value;if(name){document.getElementById('settings-modal').classList.remove('active');renameDeckAction(name)}});
 document.getElementById('deck-delete-btn').addEventListener('click',async()=>{const name=document.getElementById('deck-ops-select').value;if(name){document.getElementById('settings-modal').classList.remove('active');await deleteDeckAction(name)}});
-document.getElementById('autoplay-settings-row').addEventListener('click',()=>{const s=document.getElementById('autoplay-settings-section');s.style.display=s.style.display==='none'?'block':'none'});
+document.getElementById('autoplay-settings-row').addEventListener('click',()=>{const s=document.getElementById('autoplay-settings-section');const opening=s.style.display==='none';s.style.display=opening?'block':'none';if(opening){document.getElementById('cfg-auto-detail').checked=autoShowDetail}});
+document.getElementById('cfg-auto-detail').addEventListener('change',e=>{autoShowDetail=e.target.checked;LS.save('fc_auto_detail',autoShowDetail)});
 document.getElementById('reset-group-row').addEventListener('click',()=>{const s=document.getElementById('reset-group-section');s.style.display=s.style.display==='none'?'block':'none'});
 document.getElementById('howto-row').addEventListener('click',()=>{const s=document.getElementById('howto-section');s.style.display=s.style.display==='none'?'block':'none'});
 function updateCsvSubdecks(){const dk=getDeck(document.getElementById('csv-import-deck').value);const sds=dk?.subdecks||[];document.getElementById('csv-import-subdeck').innerHTML='<option value="">なし（直下）</option>'+sds.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')}
