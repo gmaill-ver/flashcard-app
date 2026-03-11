@@ -190,6 +190,19 @@
     .stats-range-btn{padding:6px 16px;border:1px solid #ddd;border-radius:20px;background:#fff;font-size:.8rem;cursor:pointer;color:#666;transition:all .2s}
     .stats-range-btn.active{background:#333;color:#fff;border-color:#333}
 
+    /* アフェリページ */
+    .affili-section{margin-bottom:24px}
+    .affili-section-title{font-size:1rem;font-weight:700;color:#333;margin:20px 0 10px;padding-left:4px;border-left:3px solid #2196f3}
+    .affili-card{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:14px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;text-decoration:none;color:inherit;transition:box-shadow .2s}
+    .affili-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.1)}
+    .affili-thumb{width:60px;height:80px;object-fit:cover;border-radius:6px;flex-shrink:0;background:#f0f0f0}
+    .affili-info{flex:1;min-width:0}
+    .affili-tag{display:inline-block;font-size:.65rem;padding:1px 8px;border-radius:10px;background:#e3f2fd;color:#1565c0;margin-bottom:4px;font-weight:600}
+    .affili-title{font-size:.9rem;font-weight:600;line-height:1.4;margin-bottom:4px;word-break:break-word}
+    .affili-desc{font-size:.75rem;color:#888;line-height:1.5;margin-bottom:6px}
+    .affili-btn{display:inline-block;background:#ff9900;color:#fff;font-size:.75rem;font-weight:700;padding:5px 14px;border-radius:20px;text-decoration:none}
+    .affili-note{font-size:.72rem;color:#aaa;text-align:center;margin-top:20px;line-height:1.8}
+
     .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;justify-content:center;align-items:flex-end}
     .modal-overlay.active{display:flex}
     .modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:600px;padding:24px 20px;max-height:70vh;overflow-y:auto;animation:slideUp .25s ease}
@@ -225,6 +238,7 @@
     <button class="header-back" id="back-btn">&#8592;</button>
     <h1 id="header-title">デッキ</h1>
     <div class="header-actions">
+      <button class="header-icon-btn" id="affiliate-btn" title="参考書">&#x1f4da;</button>
       <button class="header-icon-btn" id="stats-btn" title="統計">&#x1f4ca;</button>
       <button class="header-icon-btn" id="settings-btn" title="設定">&#x2699;</button>
       <div class="header-user" id="header-user"><img id="header-avatar" style="width:100%;height:100%;object-fit:cover;display:none" onerror="this.style.display='none';document.getElementById('header-user-icon').style.display='block'"><span id="header-user-icon" style="font-size:1.1rem">&#x1f464;</span></div>
@@ -312,6 +326,89 @@
       </div>
       <canvas id="stats-chart"></canvas>
     </div>
+  </div>
+
+  <!-- アフェリエイト -->
+  <div class="page" id="page-affiliate">
+    <div class="affili-section">
+      <div class="affili-section-title">&#x1f4d6; 行政書士 おすすめ参考書</div>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4847150023" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51XkStIqfML._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">行政書士</span>
+          <div class="affili-title">みんなが欲しかった！行政書士の教科書 2025年度版</div>
+          <div class="affili-desc">TAC出版。フルカラーで見やすく、初学者でも理解しやすい定番テキスト。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4847150031" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51o3UhBTiGL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">行政書士</span>
+          <div class="affili-title">みんなが欲しかった！行政書士の問題集 2025年度版</div>
+          <div class="affili-desc">TAC出版。教科書とリンクした一問一答形式の過去問集。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4426614481" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51mCk9yc3xL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">行政書士</span>
+          <div class="affili-title">出る順行政書士 合格基本書 2025年版（東京リーガルマインド）</div>
+          <div class="affili-desc">LEC。出題頻度別に体系的に整理された信頼の一冊。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4426614503" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51+Yw8cjHnL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">行政書士</span>
+          <div class="affili-title">出る順行政書士 ウォーク問過去問題集 2025年版</div>
+          <div class="affili-desc">LEC。10年分以上の過去問を収録。解説が丁寧で実力がつく。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+    </div>
+    <div class="affili-section">
+      <div class="affili-section-title">&#x1f3e0; 宅建士 おすすめ参考書</div>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4847150074" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51F3vlL63xL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">宅建士</span>
+          <div class="affili-title">みんなが欲しかった！宅建士の教科書 2025年度版</div>
+          <div class="affili-desc">TAC出版。イラスト多めで法律初心者にも分かりやすい人気No.1テキスト。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4847150082" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51aLaKC+EwL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">宅建士</span>
+          <div class="affili-title">みんなが欲しかった！宅建士の問題集 2025年度版</div>
+          <div class="affili-desc">TAC出版。分野別に分解できる5分冊。スキマ時間に最適。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4426614538" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51WW0Y1TGWL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">宅建士</span>
+          <div class="affili-title">出る順宅建士 合格テキスト 2025年版（LEC）</div>
+          <div class="affili-desc">LEC。本試験に出る内容に絞った効率学習テキスト。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+      <a class="affili-card" href="https://www.amazon.co.jp/dp/4426614546" target="_blank" rel="noopener">
+        <img class="affili-thumb" src="https://m.media-amazon.com/images/I/51w5aTpFVLL._SY466_.jpg" alt="" onerror="this.style.background='#e0e0e0'">
+        <div class="affili-info">
+          <span class="affili-tag">宅建士</span>
+          <div class="affili-title">出る順宅建士 ウォーク問過去問題集 2025年版</div>
+          <div class="affili-desc">LEC。12年分の過去問を収録した実績あるシリーズ。</div>
+          <span class="affili-btn">Amazonで見る</span>
+        </div>
+      </a>
+    </div>
+    <div class="affili-note">※ リンク先はAmazon商品ページです。<br>アフィリエイトリンクに変更する場合はURLに ?tag=YOUR_ID を付与してください。</div>
   </div>
 
   <div class="modal-overlay" id="settings-modal"><div class="modal">
@@ -417,7 +514,7 @@ function todayStr(){const d=new Date();return `${d.getFullYear()}-${String(d.get
 function trackDaily(r,dk){const t=todayStr();if(!dailyStats[t])dailyStats[t]={reviews:0,incorrect:0,correct:0,understood:0,decks:{}};dailyStats[t].reviews++;dailyStats[t][r]++;if(dk){if(!dailyStats[t].decks)dailyStats[t].decks={};if(!dailyStats[t].decks[dk])dailyStats[t].decks[dk]={reviews:0,incorrect:0,correct:0,understood:0};dailyStats[t].decks[dk].reviews++;dailyStats[t].decks[dk][r]++}}
 function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
 function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
-async function loadDeckCards(name){if(isGuest)return;try{const snap=await cardsCol().where('deck','==',name).get({source:'server'});cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e2){console.error(e2);showToast('カード読み込み失敗')}}}
+async function loadDeckCards(name){if(isGuest)return;try{const snap=await cardsCol().where('deck','==',name).get({source:'server'});cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e2){console.error(e2);showToast('カード読み込み失敗')}}const dk=getDeck(name);if(dk&&dk.subdecks&&dk.subdecks.length>0){const sc={};for(const sd of dk.subdecks)sc[sd]=cards.filter(c=>c.subdeck===sd).length;dk.subdeckCounts=sc;saveDecks()}}
 
 function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'2',question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'3',question:'尊属殺重罰規定違憲判決のポイントは？',answer:'刑法200条は法の下の平等（憲法14条1項）に違反し無効。',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];LS.save('fc_cards',cards)}
 async function seedFS(){const ss=[{question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];for(const s of ss){const r=await cardsCol().add(s);cards.push({id:r.id,...s})}}
@@ -958,10 +1055,12 @@ async function navigateTo(page,data){
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
+    case'affiliate':showPage('affiliate');back.classList.add('visible');title.textContent='参考書・問題集';break;
   }
 }
 document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
 document.getElementById('stats-btn').addEventListener('click',()=>navigateTo('stats'));
+document.getElementById('affiliate-btn').addEventListener('click',()=>navigateTo('affiliate'));
 
 /* ========== Home Tabs ========== */
 function setHomeTab(tab){
@@ -987,7 +1086,7 @@ function renderDeckList(){
   for(const d of decks){
     const total=d.cardCount||0,hasSD=d.subdecks&&d.subdecks.length>0,exp=expandedDecks.has(d.name);
     html+=`<div class="deck-card" data-deck="${esc(d.name)}">${hasSD?`<span class="deck-chevron">${exp?'▼':'▶'}</span>`:''}<span class="deck-card-name">${esc(d.name)}</span>${d.publishedId?'<span class="badge-public">公開中</span>':''}<span class="deck-count">${total}枚</span><button class="deck-manage-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button></div>`;
-    if(hasSD&&exp){for(const sd of d.subdecks){html+=`<div class="subdeck-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}">${esc(sd)}</div>`}html+=`<div class="subdeck-card subdeck-study-all" data-deck="${esc(d.name)}" data-subdeck="">全体を学習</div>`}
+    if(hasSD&&exp){const sc=d.subdeckCounts||{};for(const sd of d.subdecks){const cnt=sc[sd]!=null?`<span class="deck-count" style="margin-left:auto">${sc[sd]}枚</span>`:'';html+=`<div class="subdeck-card" style="display:flex;align-items:center" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><span>${esc(sd)}</span>${cnt}</div>`}html+=`<div class="subdeck-card subdeck-study-all" data-deck="${esc(d.name)}" data-subdeck="">全体を学習</div>`}
   }
   el.innerHTML=html;
   el.querySelectorAll('.deck-card').forEach(c=>{c.addEventListener('click',e=>{if(e.target.closest('[data-act="manage"]')){e.stopPropagation();navigateTo('manage',c.dataset.deck);return}const dk=getDeck(c.dataset.deck);if(dk&&dk.subdecks&&dk.subdecks.length>0){if(expandedDecks.has(dk.name))expandedDecks.delete(dk.name);else expandedDecks.add(dk.name);renderDeckList()}else{navigateTo('study',{deck:c.dataset.deck})}})});
