@@ -435,7 +435,8 @@ async function loadData(){
     const doc=await userDoc().get();let needsMeta=false;
     if(doc.exists){const d=doc.data(),raw=d.decks;decks=migrateDecks(raw);stats=migrateStats(d.stats);dailyStats=d.dailyStats||{};needsMeta=raw&&raw.length>0&&raw[0].cardCount==null}
     else{decks=[{name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}];stats={reviews:0,incorrect:0,correct:0,understood:0};await userDoc().set({decks,stats});await seedFS();syncAllDeckMeta();await saveDecks();try{await db.collection('meta').doc('stats').set({totalUsers:firebase.firestore.FieldValue.increment(1)},{merge:true})}catch(e){console.error(e)}}
-    if(needsMeta){const snap=await cardsCol().get();const all=snap.docs.map(d=>({id:d.id,...d.data()}));for(const dk of decks){const dc=all.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}};await saveDecks()}
+    const needsSD=decks.some(dk=>dk.subdecks&&dk.subdecks.length>0&&!dk.subdeckCounts);
+    if(needsMeta||needsSD){const snap=await cardsCol().get();const all=snap.docs.map(d=>({id:d.id,...d.data()}));for(const dk of decks){const dc=all.filter(c=>c.deck===dk.name);if(needsMeta){dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}if(dk.subdecks&&dk.subdecks.length>0&&(needsSD||!dk.subdeckCounts)){const sc={};for(const sd of dk.subdecks)sc[sd]=dc.filter(c=>c.subdeck===sd).length;dk.subdeckCounts=sc;}};await saveDecks()}
     cards=[];
   }catch(e){console.error(e);showToast('読み込み失敗')}
 }
