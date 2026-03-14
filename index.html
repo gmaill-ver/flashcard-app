@@ -49,6 +49,7 @@
     .header-back{background:none;border:none;font-size:1.4rem;cursor:pointer;color:#2196f3;padding:4px 8px;display:none}
     .header-back.visible{display:block}
     .header-actions{display:flex;gap:4px;align-items:center}
+    .header-breadcrumb{font-size:.62rem;color:#888;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none;margin-right:2px}.header-breadcrumb.visible{display:block}
     .header-icon-btn{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:6px 8px;border-radius:6px;color:#555}
     .header-icon-btn:hover{background:#eee}
     .header-user{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:#f5f5f5;cursor:pointer;overflow:hidden}
@@ -236,6 +237,7 @@
     <button class="header-back" id="back-btn">&#8592;</button>
     <h1 id="header-title">デッキ</h1>
     <div class="header-actions">
+      <span class="header-breadcrumb" id="header-breadcrumb"></span>
       <button class="header-icon-btn" id="affiliate-btn" title="参考書">&#x1f4da;</button>
       <button class="header-icon-btn" id="stats-btn" title="統計">&#x1f4ca;</button>
       <button class="header-icon-btn" id="settings-btn" title="設定">&#x2699;</button>
@@ -260,7 +262,6 @@
 
   <!-- 学習 -->
   <div class="page" id="page-study">
-    <div class="study-deck-name" id="study-deck-name"></div>
     <div class="study-filters" id="study-filters"></div>
     <div class="study-sort" id="study-sort"></div>
     <div class="study-progress"><span id="study-progress-text">0 / 0</span><div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div></div></div>
@@ -450,7 +451,7 @@ function todayStr(){const d=new Date();return `${d.getFullYear()}-${String(d.get
 function trackDaily(r,dk){const t=todayStr();if(!dailyStats[t])dailyStats[t]={reviews:0,incorrect:0,correct:0,understood:0,decks:{}};dailyStats[t].reviews++;dailyStats[t][r]++;if(dk){if(!dailyStats[t].decks)dailyStats[t].decks={};if(!dailyStats[t].decks[dk])dailyStats[t].decks[dk]={reviews:0,incorrect:0,correct:0,understood:0};dailyStats[t].decks[dk].reviews++;dailyStats[t].decks[dk][r]++}}
 function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
 function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
-async function loadDeckCards(name){if(isGuest)return;try{const snap=await cardsCol().where('deck','==',name).get({source:'server'});cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e2){console.error(e2);showToast('カード読み込み失敗')}}const dk=getDeck(name);if(dk&&dk.subdecks&&dk.subdecks.length>0){const sc={};for(const sd of dk.subdecks)sc[sd]=cards.filter(c=>c.subdeck===sd).length;dk.subdeckCounts=sc;saveDecks()}}
+async function loadDeckCards(name){if(isGuest)return;let fromCache=false;try{const snap=await cardsCol().where('deck','==',name).get({source:'cache'});if(snap.size>0){cards=snap.docs.map(d=>({id:d.id,...d.data()}));fromCache=true;}}catch(e){}if(!fromCache){try{const snap=await cardsCol().where('deck','==',name).get({source:'server'});cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){try{const snap=await cardsCol().where('deck','==',name).get();cards=snap.docs.map(d=>({id:d.id,...d.data()}))}catch(e2){console.error(e2);showToast('カード読み込み失敗')}}}else{cardsCol().where('deck','==',name).get({source:'server'}).then(snap=>{cards=snap.docs.map(d=>({id:d.id,...d.data()}));const dk=getDeck(name);if(dk&&dk.subdecks&&dk.subdecks.length>0){const sc={};for(const sd of dk.subdecks)sc[sd]=cards.filter(c=>c.subdeck===sd).length;dk.subdeckCounts=sc;saveDecks()}}).catch(()=>{})}const dk=getDeck(name);if(dk&&dk.subdecks&&dk.subdecks.length>0){const sc={};for(const sd of dk.subdecks)sc[sd]=cards.filter(c=>c.subdeck===sd).length;dk.subdeckCounts=sc;saveDecks()}}
 
 function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'2',question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'3',question:'尊属殺重罰規定違憲判決のポイントは？',answer:'刑法200条は法の下の平等（憲法14条1項）に違反し無効。',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];LS.save('fc_cards',cards)}
 async function seedFS(){const ss=[{question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];for(const s of ss){const r=await cardsCol().add(s);cards.push({id:r.id,...s})}}
@@ -985,21 +986,21 @@ function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.
 function returnFromOverlay(){
   currentPage=previousPage;
   showPage(previousPage);
-  const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
-  if(previousPage==='study'){back.classList.add('visible');title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;}
-  else if(previousPage==='manage'){back.classList.add('visible');title.textContent=currentDeck+' - 管理';}
-  else{back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);}
+  const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
+  if(previousPage==='study'){back.classList.add('visible');title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');}
+  else if(previousPage==='manage'){back.classList.add('visible');title.textContent=currentDeck+' - 管理';bc.classList.remove('visible');}
+  else{back.classList.remove('visible');title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);}
 }
 async function navigateTo(page,data){
   stopAutoPlay();isPublicStudy=false;
   if(page==='stats'||page==='affiliate')previousPage=currentPage;
   currentPage=page;
-  const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
+  const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
   switch(page){
-    case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
+    case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);break;
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
-    case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
-    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
+    case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
+    case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.textContent='統計';renderStats();break;
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.textContent='参考書・問題集';break;
   }
@@ -1143,7 +1144,7 @@ function renderStudyFilters(){
 }
 function renderStudyCard(){
   const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),cs=document.getElementById('anki-card-stats');
-  document.getElementById('study-deck-name').textContent=isPublicStudy?'':currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;
+  const bc=document.getElementById('header-breadcrumb');bc.textContent=isPublicStudy?'':currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.toggle('visible',!isPublicStudy);
   const dtW=document.getElementById('anki-detail-wrap'),dtE=document.getElementById('anki-detail'),dtT=document.getElementById('anki-detail-toggle');
   if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';rt.style.display='none';cs.style.display='none';dtW.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
   const card=studyCards[studyIndex];
