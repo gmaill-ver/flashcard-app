@@ -416,7 +416,7 @@ let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
 let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null,autoShowDetail=false;
-let isPublicStudy=false,activeHomeTab='my',currentPage='home',expandedDecks=new Set(),manageSubdeckFilter='',manageSearch='',managePage=0;
+let isPublicStudy=false,activeHomeTab='my',currentPage='home',previousPage='home',expandedDecks=new Set(),manageSubdeckFilter='',manageSearch='',managePage=0;
 const MANAGE_PER_PAGE=50;
 let dailyStats={},statsChart=null,statsRange='day',statsFilterDeck='';
 
@@ -983,7 +983,9 @@ async function initApp(){showLoading();await loadData();await seedKenpo();await 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
 async function navigateTo(page,data){
-  stopAutoPlay();isPublicStudy=false;currentPage=page;
+  stopAutoPlay();isPublicStudy=false;
+  if(page!=='stats'&&page!=='affiliate')previousPage=currentPage;
+  currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);break;
@@ -995,8 +997,8 @@ async function navigateTo(page,data){
   }
 }
 document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
-document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')navigateTo('home');else navigateTo('stats')});
-document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')navigateTo('home');else navigateTo('affiliate')});
+document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')navigateTo(previousPage);else navigateTo('stats')});
+document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')navigateTo(previousPage);else navigateTo('affiliate')});
 
 /* ========== Home Tabs ========== */
 function setHomeTab(tab){
@@ -1157,7 +1159,6 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   await updateCard(card.id,upd);await saveStats();
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
   studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
-  studyCards=getStudyPool();if(studyIndex>=studyCards.length)studyIndex=0;
   renderStudyFilters();
   if(isPlaying){if(playTimer)clearTimeout(playTimer);autoPlayNext()}else{renderStudyCard()}
 })});
@@ -1350,17 +1351,18 @@ async function sendChat(){
   if(!msg)return;
   input.value='';btn.disabled=true;
   addChatMsg('user',msg);
-  let userMsg=msg;
-  if(chatHistory.length===0&&studyCards&&studyCards[studyIndex]){
+  chatHistory.push({role:'user',content:msg});
+  let apiMessages=[...chatHistory];
+  if(studyCards&&studyCards[studyIndex]){
     const c=studyCards[studyIndex];
-    userMsg=`【現在のカード】問題: ${c.question} / 答え: ${c.answer}${c.detail?' / 詳細: '+c.detail:''}\n\n${msg}`;
+    const ctx=`【現在学習中のカード】\n問題: ${c.question}\n答え: ${c.answer}${c.detail?'\n詳細: '+c.detail:''}`;
+    apiMessages=[{role:'user',content:ctx},{role:'assistant',content:'このカードについてご質問にお答えします。'},  ...chatHistory];
   }
-  chatHistory.push({role:'user',content:userMsg});
   showChatLoading();
   try{
     const res=await fetch('https://chatwithclaude-ydgcevv45q-uc.a.run.app',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:chatHistory,userId:currentUser?currentUser.uid:null})
+      body:JSON.stringify({messages:apiMessages,userId:currentUser?currentUser.uid:null})
     });
     const data=await res.json();
     removeChatLoading();
