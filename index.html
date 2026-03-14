@@ -982,9 +982,17 @@ async function initApp(){showLoading();await loadData();await seedKenpo();await 
 
 /* ========== Nav ========== */
 function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active')}
+function returnFromOverlay(){
+  currentPage=previousPage;
+  showPage(previousPage);
+  const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
+  if(previousPage==='study'){back.classList.add('visible');title.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;}
+  else if(previousPage==='manage'){back.classList.add('visible');title.textContent=currentDeck+' - 管理';}
+  else{back.classList.remove('visible');title.textContent='ウルトラAnki';renderDeckList();setHomeTab(activeHomeTab);}
+}
 async function navigateTo(page,data){
   stopAutoPlay();isPublicStudy=false;
-  if(page!=='stats'&&page!=='affiliate')previousPage=currentPage;
+  if(page==='stats'||page==='affiliate')previousPage=currentPage;
   currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title');
   switch(page){
@@ -997,8 +1005,8 @@ async function navigateTo(page,data){
   }
 }
 document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
-document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')navigateTo(previousPage);else navigateTo('stats')});
-document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')navigateTo(previousPage);else navigateTo('affiliate')});
+document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')returnFromOverlay();else navigateTo('stats')});
+document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')returnFromOverlay();else navigateTo('affiliate')});
 
 /* ========== Home Tabs ========== */
 function setHomeTab(tab){
