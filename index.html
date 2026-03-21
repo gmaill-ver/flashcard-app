@@ -192,18 +192,8 @@
     .stats-range-btn.active{background:#333;color:#fff;border-color:#333}
     .stats-memo-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:20px}
     .stats-memo-wrap h3{font-size:.85rem;font-weight:600;color:#555;margin-bottom:10px}
-    .stats-memo-list{list-style:none;margin-bottom:10px;min-height:24px}
-    .stats-memo-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:.88rem;color:#333;line-height:1.5}
-    .stats-memo-item:last-child{border-bottom:none}
-    .stats-memo-bullet{color:#2196f3;margin-top:2px;flex-shrink:0}
-    .stats-memo-text{flex:1;white-space:pre-wrap;word-break:break-word}
-    .stats-memo-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:.9rem;padding:0 2px;flex-shrink:0;line-height:1}
-    .stats-memo-del:hover{color:#e53935}
-    .stats-memo-input-row{display:flex;gap:8px}
-    .stats-memo-input{flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;outline:none;font-family:inherit}
-    .stats-memo-input:focus{border-color:#2196f3}
-    .stats-memo-add-btn{padding:8px 14px;background:#2196f3;color:#fff;border:none;border-radius:8px;font-size:.85rem;cursor:pointer;white-space:nowrap}
-    .stats-memo-add-btn:hover{background:#1976d2}
+    .stats-memo-textarea{width:100%;min-height:120px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.88rem;font-family:inherit;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;color:#333}
+    .stats-memo-textarea:focus{border-color:#2196f3}
 
     /* アフェリページ */
     .affili-section-title{font-size:1rem;font-weight:700;color:#333;margin:20px 0 10px;padding-left:4px;border-left:3px solid #2196f3}
@@ -342,11 +332,7 @@
     </div>
     <div class="stats-memo-wrap">
       <h3>📝 学習メモ</h3>
-      <ul class="stats-memo-list" id="stats-memo-list"></ul>
-      <div class="stats-memo-input-row">
-        <input class="stats-memo-input" id="stats-memo-input" type="text" placeholder="学習計画・メモを追加...">
-        <button class="stats-memo-add-btn" id="stats-memo-add-btn">追加</button>
-      </div>
+      <textarea class="stats-memo-textarea" id="stats-memo-textarea" placeholder="学習計画やメモを自由に入力..."></textarea>
     </div>
   </div>
 
@@ -1024,7 +1010,7 @@ async function navigateTo(page,data){
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.style.display='none';bc.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
-    case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo().then(renderStudyMemo);break;
+    case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.style.display='';title.textContent='参考書・問題集';break;
   }
 }
@@ -1327,13 +1313,10 @@ document.getElementById('stats-deck-filter').addEventListener('change',e=>{stats
 document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};dailyStats={};await saveStats();showToast('リセットしました');document.getElementById('settings-modal').classList.remove('active')});
 
 /* ========== Study Memo ========== */
-let studyMemo=[];
-async function loadStudyMemo(){if(isGuest){studyMemo=LS.load('fc_study_memo',[]);return}try{const doc=await userDoc().get();studyMemo=(doc.exists&&doc.data().studyMemo)||[]}catch(e){studyMemo=[]}}
-async function saveStudyMemo(){if(isGuest){LS.save('fc_study_memo',studyMemo);return}try{await userDoc().update({studyMemo})}catch(e){console.error(e)}}
-function renderStudyMemo(){const ul=document.getElementById('stats-memo-list');if(!ul)return;ul.innerHTML=studyMemo.map((t,i)=>`<li class="stats-memo-item"><span class="stats-memo-bullet">•</span><span class="stats-memo-text">${esc(t)}</span><button class="stats-memo-del" data-i="${i}" title="削除">✕</button></li>`).join('');ul.querySelectorAll('.stats-memo-del').forEach(btn=>{btn.addEventListener('click',async()=>{const i=parseInt(btn.dataset.i);studyMemo.splice(i,1);await saveStudyMemo();renderStudyMemo()})})}
-async function addStudyMemo(){const inp=document.getElementById('stats-memo-input');const t=inp.value.trim();if(!t)return;studyMemo.push(t);inp.value='';await saveStudyMemo();renderStudyMemo()}
-document.getElementById('stats-memo-add-btn').addEventListener('click',addStudyMemo);
-document.getElementById('stats-memo-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addStudyMemo()}});
+let memoSaveTimer=null;
+async function loadStudyMemo(){let text='';if(isGuest){text=LS.load('fc_study_memo','')}else{try{const doc=await userDoc().get();text=(doc.exists&&doc.data().studyMemo)||''}catch(e){}}const ta=document.getElementById('stats-memo-textarea');if(ta)ta.value=text}
+async function saveStudyMemo(text){if(isGuest){LS.save('fc_study_memo',text);return}try{await userDoc().update({studyMemo:text})}catch(e){console.error(e)}}
+document.getElementById('stats-memo-textarea').addEventListener('input',e=>{clearTimeout(memoSaveTimer);memoSaveTimer=setTimeout(()=>saveStudyMemo(e.target.value),600)});
 
 /* ========== Settings ========== */
 document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){const m=document.getElementById('manage-settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{renderManageSubdecks();renderPublishSection();m.classList.add('active')}}else{const m=document.getElementById('settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('autoplay-settings-section').style.display='none';document.getElementById('howto-section').style.display='none';document.getElementById('reset-group-section').style.display='none';m.classList.add('active')}}});
