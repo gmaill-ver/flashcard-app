@@ -192,7 +192,7 @@
     .stats-range-btn.active{background:#333;color:#fff;border-color:#333}
     .stats-memo-wrap{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:20px}
     .stats-memo-wrap h3{font-size:.85rem;font-weight:600;color:#555;margin-bottom:10px}
-    .stats-memo-textarea{width:100%;min-height:120px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.88rem;font-family:inherit;line-height:1.7;resize:vertical;outline:none;box-sizing:border-box;color:#333}
+    .stats-memo-textarea{width:100%;min-height:120px;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.88rem;font-family:inherit;line-height:1.7;resize:none;outline:none;box-sizing:border-box;color:#333;overflow:hidden}
     .stats-memo-textarea:focus{border-color:#2196f3}
 
     /* アフェリページ */
@@ -1314,9 +1314,11 @@ document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if
 
 /* ========== Study Memo ========== */
 let memoSaveTimer=null;
-async function loadStudyMemo(){let text='';if(isGuest){text=LS.load('fc_study_memo','')}else{try{const doc=await userDoc().get();text=(doc.exists&&doc.data().studyMemo)||''}catch(e){}}const ta=document.getElementById('stats-memo-textarea');if(ta)ta.value=text}
+async function loadStudyMemo(){let text='';if(isGuest){text=LS.load('fc_study_memo','')}else{try{const doc=await userDoc().get();text=(doc.exists&&doc.data().studyMemo)||''}catch(e){}}const ta=document.getElementById('stats-memo-textarea');if(ta){ta.value=text;autoResizeMemo(ta)}}
 async function saveStudyMemo(text){if(isGuest){LS.save('fc_study_memo',text);return}try{await userDoc().update({studyMemo:text})}catch(e){console.error(e)}}
-document.getElementById('stats-memo-textarea').addEventListener('input',e=>{clearTimeout(memoSaveTimer);memoSaveTimer=setTimeout(()=>saveStudyMemo(e.target.value),600)});
+function autoResizeMemo(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px'}
+const memoTa=document.getElementById('stats-memo-textarea');
+memoTa.addEventListener('input',e=>{autoResizeMemo(e.target);clearTimeout(memoSaveTimer);memoSaveTimer=setTimeout(()=>saveStudyMemo(e.target.value),600)});
 
 /* ========== Settings ========== */
 document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){const m=document.getElementById('manage-settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{renderManageSubdecks();renderPublishSection();m.classList.add('active')}}else{const m=document.getElementById('settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('autoplay-settings-section').style.display='none';document.getElementById('howto-section').style.display='none';document.getElementById('reset-group-section').style.display='none';m.classList.add('active')}}});
