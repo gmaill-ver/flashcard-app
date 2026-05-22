@@ -401,6 +401,11 @@
       <div class="subdeck-chips" id="subdeck-chips"></div>
       <div class="add-deck-row"><input type="text" id="new-subdeck-input" placeholder="サブデッキ名"><button class="btn btn-blue btn-sm" id="add-subdeck-btn">追加</button></div>
     </div>
+    <div id="category-rename-section" style="margin-bottom:16px">
+      <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f3f7; カテゴリ</div>
+      <select id="category-subdeck-sel" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;margin-bottom:8px;background:#fff"><option value="">サブデッキを選択...</option></select>
+      <div class="subdeck-chips" id="category-chips"></div>
+    </div>
     <div id="publish-section">
       <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f4e4; 公開設定</div>
       <div class="publish-status" id="publish-status">このデッキは公開されていません</div>
@@ -1257,6 +1262,34 @@ function renderManageSubdecks(){
   sel.innerHTML='<option value="">なし（直下）</option>'+deck.subdecks.map(sd=>`<option value="${esc(sd)}">${esc(sd)}</option>`).join('');
   document.getElementById('subdeck-select-group').style.display=deck.subdecks.length?'block':'none';
 }
+function renderManageCategorySection(){
+  const dk=getDeck(currentDeck);const sec=document.getElementById('category-rename-section');const sel=document.getElementById('category-subdeck-sel');
+  if(!dk||!dk.subdecks?.length){sec.style.display='none';return}
+  const sdsWithCats=dk.subdecks.filter(sd=>(dk.categoryMap?.[sd]||[]).length>0);
+  sec.style.display=sdsWithCats.length?'block':'none';if(!sdsWithCats.length)return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">サブデッキを選択...</option>'+sdsWithCats.map(sd=>`<option value="${esc(sd)}"${prev===sd?' selected':''}>${esc(sd)}</option>`).join('');
+  sel.onchange=()=>renderManageCategoryChips(sel.value);
+  renderManageCategoryChips(sel.value);
+}
+function renderManageCategoryChips(subdeck){
+  const dk=getDeck(currentDeck);const el=document.getElementById('category-chips');
+  if(!dk||!subdeck){el.innerHTML='';return}
+  const cats=(dk.categoryMap||{})[subdeck]||[];
+  if(!cats.length){el.innerHTML='<div style="font-size:.82rem;color:#aaa;padding:4px 0">カテゴリなし</div>';return}
+  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span></div>`).join('');
+  el.querySelectorAll('.cat-chip-rename').forEach(btn=>{btn.addEventListener('click',async()=>{
+    const oldCat=btn.dataset.cat,sd=btn.dataset.sd;
+    const newCat=prompt('新しいカテゴリ名:',oldCat);
+    if(!newCat||newCat.trim()===''||newCat.trim()===oldCat)return;
+    const nn=newCat.trim();const dk=getDeck(currentDeck);
+    for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd&&c.category===oldCat)c.category=nn}
+    if(!isGuest){try{const snap=await cardsCol().where('deck','==',currentDeck).where('subdeck','==',sd).where('category','==',oldCat).get();for(let i=0;i<snap.docs.length;i+=400){const batch=db.batch();snap.docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{category:nn}));await batch.commit()}}catch(e){console.error(e);showToast('Firestoreの複合インデックスが必要です')}}
+    if(dk.categoryMap?.[sd]){const idx=dk.categoryMap[sd].indexOf(oldCat);if(idx!==-1)dk.categoryMap[sd][idx]=nn}
+    if(dk.categoryCounts?.[sd]){dk.categoryCounts[sd][nn]=dk.categoryCounts[sd][oldCat];delete dk.categoryCounts[sd][oldCat]}
+    await saveDecks();renderManageCategoryChips(sd);renderDeckList();showToast(`「${nn}」に変更しました`);
+  })});
+}
 document.getElementById('add-subdeck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-subdeck-input'),n=i.value.trim(),dk=getDeck(currentDeck);if(n&&dk&&!dk.subdecks.includes(n)){dk.subdecks.push(n);await saveDecks();i.value='';renderManageSubdecks();renderManageList();showToast(`サブデッキ「${n}」を追加`)}});
 document.getElementById('new-subdeck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-subdeck-btn').click()}});
 document.getElementById('manage-search').addEventListener('input',e=>{manageSearch=e.target.value.trim().toLowerCase();managePage=0;renderManageList()});
@@ -1326,7 +1359,7 @@ const memoTa=document.getElementById('stats-memo-textarea');
 memoTa.addEventListener('input',e=>{autoResizeMemo(e.target);clearTimeout(memoSaveTimer);memoSaveTimer=setTimeout(()=>saveStudyMemo(e.target.value),600)});
 
 /* ========== Settings ========== */
-document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){const m=document.getElementById('manage-settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{renderManageSubdecks();renderPublishSection();m.classList.add('active')}}else{const m=document.getElementById('settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('autoplay-settings-section').style.display='none';document.getElementById('howto-section').style.display='none';document.getElementById('reset-group-section').style.display='none';m.classList.add('active')}}});
+document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){const m=document.getElementById('manage-settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{renderManageSubdecks();renderManageCategorySection();renderPublishSection();m.classList.add('active')}}else{const m=document.getElementById('settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('autoplay-settings-section').style.display='none';document.getElementById('howto-section').style.display='none';document.getElementById('reset-group-section').style.display='none';m.classList.add('active')}}});
 document.getElementById('settings-close').addEventListener('click',()=>document.getElementById('settings-modal').classList.remove('active'));
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 document.getElementById('add-deck-modal-row').addEventListener('click',()=>{const s=document.getElementById('add-deck-modal-section');s.style.display=s.style.display==='none'?'block':'none'});
