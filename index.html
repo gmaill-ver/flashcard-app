@@ -104,6 +104,9 @@
     .subdeck-card{margin-left:24px;background:#fafafa;border-radius:10px;padding:10px 16px;cursor:pointer;border:1px solid #eee;transition:all .2s;font-size:.9rem;font-weight:500}
     .subdeck-card:hover{background:#f0f0f0}
     .subdeck-study-all{color:#2196f3}
+    .category-card{margin-left:48px;background:#f5f5f5;border-radius:8px;padding:8px 14px;cursor:pointer;border:1px solid #e8e8e8;transition:all .2s;font-size:.85rem;display:flex;align-items:center}
+    .category-card:hover{background:#ebebeb}
+    .category-study-all{color:#2196f3;font-size:.82rem}
 
     .add-deck-row{display:flex;gap:8px}
     .add-deck-row input{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;background:#fafafa}
@@ -424,9 +427,9 @@ db.enablePersistence().catch(()=>{});
 /* ========== State ========== */
 let currentUser=null,isGuest=false;
 let cards=[],decks=[],stats={reviews:0,incorrect:0,correct:0,understood:0};
-let currentDeck=null,currentSubdeck=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
+let currentDeck=null,currentSubdeck=null,currentCategory=null,studyCards=[],studyIndex=0,answerShown=false,studyFilter='all';
 let isPlaying=false,playTimer=null,editingId=null,studySort=null,autoShowDetail=false;
-let isPublicStudy=false,activeHomeTab='my',currentPage='home',previousPage='home',expandedDecks=new Set(),manageSubdeckFilter='',manageSearch='',managePage=0;
+let isPublicStudy=false,activeHomeTab='my',currentPage='home',previousPage='home',expandedDecks=new Set(),expandedSubdecks=new Set(),manageSubdeckFilter='',manageSearch='',managePage=0;
 const MANAGE_PER_PAGE=50;
 let dailyStats={},statsChart=null,statsRange='day',statsFilterDeck='';
 
@@ -436,7 +439,7 @@ const LS={load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d
 /* ========== Data ========== */
 function userDoc(){return db.collection('users').doc(currentUser.uid)}
 function cardsCol(){return userDoc().collection('cards')}
-function migrateDecks(r){if(!r||!r.length)return[{name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}];if(typeof r[0]==='string')return r.map(n=>({name:n,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}));return r.map(d=>({name:d.name,subdecks:d.subdecks||[],publishedId:d.publishedId||null,cardCount:d.cardCount!=null?d.cardCount:0,ratings:d.ratings||{incorrect:0,correct:0,understood:0}}))}
+function migrateDecks(r){if(!r||!r.length)return[{name:'デフォルト',subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}];if(typeof r[0]==='string')return r.map(n=>({name:n,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}}));return r.map(d=>({...d,subdecks:d.subdecks||[],publishedId:d.publishedId||null,cardCount:d.cardCount!=null?d.cardCount:0,ratings:d.ratings||{incorrect:0,correct:0,understood:0}}))}
 function migrateStats(r){const s=r||{};return{reviews:s.reviews||0,incorrect:s.incorrect||s.hard||0,correct:s.correct||s.good||0,understood:s.understood||s.easy||0}}
 
 async function loadData(){
@@ -996,7 +999,7 @@ function returnFromOverlay(){
   currentPage=previousPage;
   showPage(previousPage);
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
-  if(previousPage==='study'){back.classList.add('visible');title.style.display='none';bc.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');}
+  if(previousPage==='study'){back.classList.add('visible');title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');}
   else if(previousPage==='manage'){back.classList.add('visible');title.style.display='';title.textContent=currentDeck+' - 管理';bc.classList.remove('visible');}
   else{back.classList.remove('visible');title.style.display='';title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);}
 }
@@ -1007,7 +1010,7 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.style.display='';title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;title.style.display='none';bc.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
@@ -1033,6 +1036,7 @@ document.querySelectorAll('.home-tab').forEach(t=>t.addEventListener('click',()=
 function getDeck(n){return decks.find(d=>d.name===n)}
 function deckCards(n){return cards.filter(c=>c.deck===n)}
 function subdeckCards(n,s){return cards.filter(c=>c.deck===n&&c.subdeck===s)}
+function categoryCards(n,s,cat){return cards.filter(c=>c.deck===n&&c.subdeck===s&&c.category===cat)}
 function countR(a,r){return a.filter(c=>c.lastRating===r).length}
 function countU(a){return a.filter(c=>!c.lastRating).length}
 
@@ -1042,11 +1046,12 @@ function renderDeckList(){
   for(const d of decks){
     const total=d.cardCount||0,hasSD=d.subdecks&&d.subdecks.length>0,exp=expandedDecks.has(d.name);
     html+=`<div class="deck-card" data-deck="${esc(d.name)}">${hasSD?`<span class="deck-chevron">${exp?'▼':'▶'}</span>`:''}<span class="deck-card-name">${esc(d.name)}</span>${d.publishedId?'<span class="badge-public">公開中</span>':''}<span class="deck-count">${total}枚</span><button class="deck-manage-btn" data-act="manage" data-deck="${esc(d.name)}" title="カード管理">&#x1f4cb;</button></div>`;
-    if(hasSD&&exp){const sc=d.subdeckCounts||{};for(const sd of d.subdecks){const cnt=sc[sd]!=null?`<span class="deck-count" style="margin-left:auto">${sc[sd]}枚</span>`:'';html+=`<div class="subdeck-card" style="display:flex;align-items:center" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}"><span>${esc(sd)}</span>${cnt}</div>`}html+=`<div class="subdeck-card subdeck-study-all" data-deck="${esc(d.name)}" data-subdeck="">全体を学習</div>`}
+    if(hasSD&&exp){const sc=d.subdeckCounts||{},cm=d.categoryMap||{},cc=d.categoryCounts||{};for(const sd of d.subdecks){const cnt=sc[sd]!=null?`<span class="deck-count" style="margin-left:auto">${sc[sd]}枚</span>`:'';const cats=cm[sd]||[];const sdExp=expandedSubdecks.has(d.name+'\x00'+sd);const sdChevron=cats.length>0?`<span class="deck-chevron" style="margin-right:4px;font-size:.6rem">${sdExp?'▼':'▶'}</span>`:'';html+=`<div class="subdeck-card" style="display:flex;align-items:center" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}">${sdChevron}<span>${esc(sd)}</span>${cnt}</div>`;if(cats.length>0&&sdExp){const sdcc=cc[sd]||{};for(const cat of cats){const catCnt=sdcc[cat]!=null?`<span class="deck-count" style="margin-left:auto">${sdcc[cat]}枚</span>`:'';html+=`<div class="category-card" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}" data-category="${esc(cat)}"><span>${esc(cat)}</span>${catCnt}</div>`}html+=`<div class="category-card category-study-all" data-deck="${esc(d.name)}" data-subdeck="${esc(sd)}" data-category="">サブデッキ全体を学習</div>`}}html+=`<div class="subdeck-card subdeck-study-all" data-deck="${esc(d.name)}" data-subdeck="">全体を学習</div>`}
   }
   el.innerHTML=html;
   el.querySelectorAll('.deck-card').forEach(c=>{c.addEventListener('click',e=>{if(e.target.closest('[data-act="manage"]')){e.stopPropagation();navigateTo('manage',c.dataset.deck);return}const dk=getDeck(c.dataset.deck);if(dk&&dk.subdecks&&dk.subdecks.length>0){if(expandedDecks.has(dk.name))expandedDecks.delete(dk.name);else expandedDecks.add(dk.name);renderDeckList()}else{navigateTo('study',{deck:c.dataset.deck})}})});
-  el.querySelectorAll('.subdeck-card').forEach(c=>{c.addEventListener('click',()=>{const sd=c.dataset.subdeck;if(sd)navigateTo('study',{deck:c.dataset.deck,subdeck:sd});else navigateTo('study',{deck:c.dataset.deck})})});
+  el.querySelectorAll('.subdeck-card').forEach(c=>{c.addEventListener('click',()=>{const sd=c.dataset.subdeck;if(!sd){navigateTo('study',{deck:c.dataset.deck});return}const dk=getDeck(c.dataset.deck);const cats=((dk?.categoryMap)||{})[sd]||[];if(cats.length>0){const key=c.dataset.deck+'\x00'+sd;if(expandedSubdecks.has(key))expandedSubdecks.delete(key);else expandedSubdecks.add(key);renderDeckList()}else{navigateTo('study',{deck:c.dataset.deck,subdeck:sd})}})});
+  el.querySelectorAll('.category-card').forEach(c=>{c.addEventListener('click',()=>{const cat=c.dataset.category;if(cat)navigateTo('study',{deck:c.dataset.deck,subdeck:c.dataset.subdeck,category:cat});else navigateTo('study',{deck:c.dataset.deck,subdeck:c.dataset.subdeck})})});
 }
 
 async function deleteDeckAction(name){
@@ -1134,7 +1139,7 @@ async function removePublicDeck(id){
 
 /* ========== Study ========== */
 function getStudyPool(){
-  let pool;if(currentSubdeck)pool=subdeckCards(currentDeck,currentSubdeck);else pool=deckCards(currentDeck);
+  let pool;if(currentCategory)pool=categoryCards(currentDeck,currentSubdeck,currentCategory);else if(currentSubdeck)pool=subdeckCards(currentDeck,currentSubdeck);else pool=deckCards(currentDeck);
   if(studyFilter!=='all'){if(studyFilter==='unrated')pool=pool.filter(c=>!c.lastRating);else pool=pool.filter(c=>c.lastRating===studyFilter)}
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
@@ -1143,7 +1148,7 @@ function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
-  const pool=currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
+  const pool=currentCategory?categoryCards(currentDeck,currentSubdeck,currentCategory):currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
   const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;LS.save('fc_studyFilter',studyFilter);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
@@ -1153,7 +1158,7 @@ function renderStudyFilters(){
 }
 function renderStudyCard(){
   const qE=document.getElementById('anki-question'),aE=document.getElementById('anki-answer'),dv=document.getElementById('anki-divider'),rt=document.getElementById('anki-rating'),lb=document.getElementById('anki-label'),cs=document.getElementById('anki-card-stats');
-  const bc=document.getElementById('header-breadcrumb');if(!isPublicStudy){bc.textContent=currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');document.getElementById('header-title').style.display='none';}
+  const bc=document.getElementById('header-breadcrumb');if(!isPublicStudy){bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');document.getElementById('header-title').style.display='none';}
   const dtW=document.getElementById('anki-detail-wrap'),dtE=document.getElementById('anki-detail'),dtT=document.getElementById('anki-detail-toggle');
   if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';rt.style.display='none';cs.style.display='none';dtW.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
   const card=studyCards[studyIndex];
