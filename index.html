@@ -304,6 +304,7 @@
       <h3 id="manage-form-title">カードを追加</h3>
       <form id="card-form">
         <div class="form-group" id="subdeck-select-group" style="display:none"><label>サブデッキ</label><select id="card-subdeck-select"><option value="">なし（直下）</option></select></div>
+        <div class="form-group" id="category-select-group" style="display:none"><label>カテゴリ</label><select id="card-category-select"><option value="">なし</option></select></div>
         <div class="form-group"><label>問題（表面）</label><textarea id="card-question" placeholder="問題を入力"></textarea></div>
         <div class="form-group"><label>答え（裏面）</label><textarea id="card-answer" placeholder="答えを入力"></textarea></div>
         <div class="form-group"><label>詳細・解説（任意）</label><textarea id="card-detail" placeholder="判例・条文・解説など" style="min-height:100px"></textarea></div>
@@ -399,6 +400,7 @@
     <div style="margin-bottom:16px">
       <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f4c2; サブデッキ</div>
       <div class="subdeck-chips" id="subdeck-chips"></div>
+      <div id="subdeck-delete-row" style="display:none;gap:8px;margin-top:4px;margin-bottom:8px"><select id="subdeck-delete-sel" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font-size:.82rem;background:#fff"><option value="">削除するサブデッキを選択...</option></select><button class="btn btn-sm" id="subdeck-delete-btn" style="background:#ff5252;color:#fff;white-space:nowrap">削除</button></div>
       <div class="add-deck-row"><input type="text" id="new-subdeck-input" placeholder="サブデッキ名"><button class="btn btn-blue btn-sm" id="add-subdeck-btn">追加</button></div>
     </div>
     <div id="category-rename-section" style="margin-bottom:16px">
@@ -1255,12 +1257,17 @@ async function unpublishDeck(){
 function renderManageSubdecks(){
   const deck=getDeck(currentDeck);if(!deck)return;
   const chips=document.getElementById('subdeck-chips');
-  chips.innerHTML=deck.subdecks.map(sd=>`<div class="subdeck-chip">${esc(sd)}<span class="subdeck-chip-rename" data-sd="${esc(sd)}" title="名称変更">&#x270f;</span><span class="subdeck-chip-del" data-sd="${esc(sd)}" title="削除">&#x2715;</span></div>`).join('');
+  chips.innerHTML=deck.subdecks.map(sd=>`<div class="subdeck-chip">${esc(sd)}<span class="subdeck-chip-rename" data-sd="${esc(sd)}" title="名称変更">&#x270f;</span></div>`).join('');
   chips.querySelectorAll('.subdeck-chip-rename').forEach(el=>{el.addEventListener('click',async()=>{const oldSd=el.dataset.sd;const newSd=prompt('新しいサブデッキ名:',oldSd);if(!newSd||newSd.trim()===''||newSd.trim()===oldSd)return;const nn=newSd.trim();if(deck.subdecks.includes(nn)){showToast('同じ名前のサブデッキがあります');return}const idx=deck.subdecks.indexOf(oldSd);if(idx!==-1)deck.subdecks[idx]=nn;if(isGuest){for(const c of cards){if(c.deck===currentDeck&&c.subdeck===oldSd)c.subdeck=nn}LS.save('fc_cards',cards)}else{const snap=await cardsCol().where('deck','==',currentDeck).where('subdeck','==',oldSd).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{subdeck:nn}));await batch.commit()}for(const c of cards){if(c.deck===currentDeck&&c.subdeck===oldSd)c.subdeck=nn}}await saveDecks();renderManageSubdecks();renderManageList();showToast(`「${nn}」に変更しました`)})});
-  chips.querySelectorAll('.subdeck-chip-del').forEach(el=>{el.addEventListener('click',async()=>{const sd=el.dataset.sd;if(!confirm(`サブデッキ「${sd}」を削除？`))return;for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd){c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({subdeck:''})}}if(isGuest)LS.save('fc_cards',cards);deck.subdecks=deck.subdecks.filter(s=>s!==sd);await saveDecks();renderManageSubdecks();renderManageList()})});
+  const delRow=document.getElementById('subdeck-delete-row');
+  const delSel=document.getElementById('subdeck-delete-sel');
+  if(deck.subdecks.length){delRow.style.display='flex';delSel.innerHTML='<option value="">削除するサブデッキを選択...</option>'+deck.subdecks.map(sd=>`<option value="${esc(sd)}">${esc(sd)}</option>`).join('')}else{delRow.style.display='none'}
+  document.getElementById('subdeck-delete-btn').onclick=async()=>{const sd=delSel.value;if(!sd)return;if(!confirm(`サブデッキ「${sd}」を削除？\nカードのサブデッキ指定は解除されます`))return;for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd){c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({subdeck:''})}}if(isGuest)LS.save('fc_cards',cards);deck.subdecks=deck.subdecks.filter(s=>s!==sd);await saveDecks();renderManageSubdecks();renderManageList()};
   const sel=document.getElementById('card-subdeck-select');
   sel.innerHTML='<option value="">なし（直下）</option>'+deck.subdecks.map(sd=>`<option value="${esc(sd)}">${esc(sd)}</option>`).join('');
   document.getElementById('subdeck-select-group').style.display=deck.subdecks.length?'block':'none';
+  sel.onchange=()=>{const dk=getDeck(currentDeck);const catSel=document.getElementById('card-category-select');const catGrp=document.getElementById('category-select-group');const cats=(dk?.categoryMap||{})[sel.value]||[];if(cats.length){catSel.innerHTML='<option value="">なし</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');catGrp.style.display='block'}else{catGrp.style.display='none'}};
+  sel.onchange();
 }
 function renderManageCategorySection(){
   const dk=getDeck(currentDeck);const sec=document.getElementById('category-rename-section');const sel=document.getElementById('category-subdeck-sel');
@@ -1313,10 +1320,10 @@ function renderManageList(){
   }catch(e){console.error('renderManageList error:',e)}
 }
 
-document.getElementById('card-form').addEventListener('submit',async e=>{e.preventDefault();const q=document.getElementById('card-question').value.trim(),a=document.getElementById('card-answer').value.trim(),sd=document.getElementById('card-subdeck-select').value,dt=document.getElementById('card-detail').value.trim();if(!q||!a)return;if(editingId){await updateCard(editingId,{question:q,answer:a,subdeck:sd,detail:dt||''});resetForm();showToast('更新しました')}else{await addCard({question:q,answer:a,detail:dt||'',deck:currentDeck,subdeck:sd,lastRating:null,created:new Date().toISOString()});showToast('追加しました')}document.getElementById('card-question').value='';document.getElementById('card-answer').value='';document.getElementById('card-detail').value='';renderManageList()});
-function editCardAction(id){const c=cards.find(x=>x.id===id);if(!c)return;editingId=id;document.getElementById('card-question').value=c.question;document.getElementById('card-answer').value=c.answer;document.getElementById('card-detail').value=c.detail||'';document.getElementById('card-subdeck-select').value=c.subdeck||'';document.getElementById('manage-form-title').textContent='カードを編集';document.getElementById('card-submit-btn').textContent='更新';document.getElementById('card-cancel-btn').style.display='block';document.getElementById('card-question').scrollIntoView({behavior:'smooth'})}
+document.getElementById('card-form').addEventListener('submit',async e=>{e.preventDefault();const q=document.getElementById('card-question').value.trim(),a=document.getElementById('card-answer').value.trim(),sd=document.getElementById('card-subdeck-select').value,cat=document.getElementById('card-category-select').value,dt=document.getElementById('card-detail').value.trim();if(!q||!a)return;if(editingId){await updateCard(editingId,{question:q,answer:a,subdeck:sd,category:cat,detail:dt||''});resetForm();showToast('更新しました')}else{await addCard({question:q,answer:a,detail:dt||'',deck:currentDeck,subdeck:sd,category:cat,lastRating:null,created:new Date().toISOString()});showToast('追加しました')}document.getElementById('card-question').value='';document.getElementById('card-answer').value='';document.getElementById('card-detail').value='';renderManageList()});
+function editCardAction(id){const c=cards.find(x=>x.id===id);if(!c)return;editingId=id;document.getElementById('card-question').value=c.question;document.getElementById('card-answer').value=c.answer;document.getElementById('card-detail').value=c.detail||'';const subSel=document.getElementById('card-subdeck-select');subSel.value=c.subdeck||'';if(subSel.onchange)subSel.onchange();document.getElementById('card-category-select').value=c.category||'';document.getElementById('manage-form-title').textContent='カードを編集';document.getElementById('card-submit-btn').textContent='更新';document.getElementById('card-cancel-btn').style.display='block';document.getElementById('card-question').scrollIntoView({behavior:'smooth'})}
 async function deleteCardAction(id){if(!confirm('削除しますか？'))return;await removeCard(id);renderManageList();showToast('削除しました')}
-function resetForm(){editingId=null;document.getElementById('card-question').value='';document.getElementById('card-answer').value='';document.getElementById('card-detail').value='';document.getElementById('manage-form-title').textContent='カードを追加';document.getElementById('card-submit-btn').textContent='追加';document.getElementById('card-cancel-btn').style.display='none'}
+function resetForm(){editingId=null;document.getElementById('card-question').value='';document.getElementById('card-answer').value='';document.getElementById('card-detail').value='';document.getElementById('card-category-select').value='';document.getElementById('category-select-group').style.display='none';document.getElementById('manage-form-title').textContent='カードを追加';document.getElementById('card-submit-btn').textContent='追加';document.getElementById('card-cancel-btn').style.display='none'}
 document.getElementById('card-cancel-btn').addEventListener('click',resetForm);
 
 /* ========== Stats ========== */
