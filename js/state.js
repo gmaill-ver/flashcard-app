@@ -52,8 +52,6 @@ let statsFilterDeck = '';
 let chatHistory = [];
 
 // ハッシュタグ
-let hashtagFilter = null; // 選択中のハッシュタグ
-let manageHashtagFilter = ''; // 管理ページでのフィルタ
 let globalMemoHashtags = []; // グローバルノートのハッシュタグ
 
 /* ========== ローカルストレージ管理 ========== */

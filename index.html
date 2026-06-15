@@ -291,18 +291,9 @@
         </div>
         <div id="anki-memo-view" style="font-size:.9rem;color:#666;white-space:pre-wrap;word-break:break-word;min-height:60px;background:#f9f9f9;padding:8px;border-radius:6px;display:block"></div>
         <textarea id="anki-memo-edit" style="width:100%;min-height:100px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:.9rem;resize:vertical;display:none;margin-top:8px"></textarea>
-        <div id="anki-hashtag-edit-wrap" style="margin-top:12px;display:none">
-          <div style="font-size:.85rem;color:#666;font-weight:500;margin-bottom:6px">🏷️ タグ</div>
-          <textarea id="anki-hashtag-edit" style="width:100%;min-height:60px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;resize:vertical" placeholder="#tag1 #tag2 #tag/subtag"></textarea>
-          <div style="font-size:.75rem;color:#888;margin-top:4px">スペースまたは改行で複数入力</div>
-        </div>
         <button id="anki-memo-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:.9rem">保存</button>
       </div>
       <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
-      <div id="anki-hashtag-wrap" style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;display:none">
-        <div style="font-size:.75rem;color:#888;margin-bottom:8px">🏷️ タグ</div>
-        <div id="anki-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-      </div>
     </div>
     <div class="anki-rating" id="anki-rating" style="display:none">
       <button class="anki-rating-btn correct" data-rating="correct">◯</button>
@@ -1162,7 +1153,7 @@ function getStudyPool(){
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
-async function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo();updateDeckHashtags(currentDeck)}
+async function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
@@ -1188,17 +1179,6 @@ function renderStudyCard(){
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;if(autoShowDetail){dtE.style.display='block';dtT.textContent='閉じる ▲'}else{dtE.style.display='none';dtT.textContent='詳しく ▼'}}else{dtW.style.display='none'}}
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';dtW.style.display='none'}
 
-  /* ハッシュタグ表示 */
-  const htWrap=document.getElementById('anki-hashtag-wrap');
-  const htList=document.getElementById('anki-hashtag-list');
-  const cardTags=card&&card.hashtags&&card.hashtags.length>0?card.hashtags:[];
-  if(cardTags.length>0){
-    htWrap.style.display='block';
-    htList.innerHTML=cardTags.map(tag=>`<button class="anki-hashtag" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff;transition:all .2s;opacity:0.8">${esc(tag)}</button>`).join('')
-  }else{
-    htWrap.style.display='none'
-  }
-
   /* メモ表示 */
   const memoWrap=document.getElementById('anki-memo-wrap');
   const memoView=document.getElementById('anki-memo-view');
@@ -1214,11 +1194,6 @@ function renderStudyCard(){
 
 document.getElementById('anki-card').addEventListener('click',e=>{
   if(e.target.closest('#anki-detail-wrap'))return;
-  const htBtn=e.target.closest('.anki-hashtag');
-  if(htBtn){
-    showToast(`タグ: ${htBtn.dataset.tag}`);
-    return;
-  }
   if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}
 });
 document.getElementById('anki-detail-toggle').addEventListener('click',()=>{const d=document.getElementById('anki-detail'),t=document.getElementById('anki-detail-toggle');if(d.style.display==='none'){d.style.display='block';t.textContent='閉じる ▲'}else{d.style.display='none';t.textContent='詳しく ▼'}});
@@ -1228,17 +1203,13 @@ document.getElementById('anki-memo-toggle').addEventListener('click',()=>{
   const view=document.getElementById('anki-memo-view');
   const edit=document.getElementById('anki-memo-edit');
   const save=document.getElementById('anki-memo-save');
-  const htWrap=document.getElementById('anki-hashtag-edit-wrap');
-  const htEdit=document.getElementById('anki-hashtag-edit');
   const btn=document.getElementById('anki-memo-toggle');
-  const card=studyCards[studyIndex];
   if(view.style.display==='block'){
-    view.style.display='none';edit.style.display='block';save.style.display='block';htWrap.style.display='block';
+    view.style.display='none';edit.style.display='block';save.style.display='block';
     edit.focus();
-    if(card&&card.hashtags){htEdit.value=card.hashtags.join(' ')}
     btn.textContent='キャンセル';
   }else{
-    view.style.display='block';edit.style.display='none';save.style.display='none';htWrap.style.display='none';
+    view.style.display='block';edit.style.display='none';save.style.display='none';
     btn.textContent='編集';
   }
 });
@@ -1247,28 +1218,16 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
   const card=studyCards[studyIndex];
   if(!card)return;
   const memo=document.getElementById('anki-memo-edit').value.trim();
-  const htInput=document.getElementById('anki-hashtag-edit').value.trim();
-
-  /* ハッシュタグをパース */
-  const hashtags=htInput?htInput.split(/[\s\n]+/).filter(t=>t.startsWith('#')).map(t=>t.slice(1).toLowerCase()):[];
-
   card.memo=memo||undefined;
-  card.hashtags=hashtags.length>0?hashtags:undefined;
-
-  const upd={memo:memo||null};
-  if(hashtags.length>0)upd.hashtags=hashtags;else upd.hashtags=null;
-
-  await updateCard(card.id,upd);
-  await updateDeckHashtags(currentDeck);
+  await updateCard(card.id,{memo:memo||null});
 
   /* UI更新 */
   const view=document.getElementById('anki-memo-view');
   const edit=document.getElementById('anki-memo-edit');
   const save=document.getElementById('anki-memo-save');
-  const htWrap=document.getElementById('anki-hashtag-edit-wrap');
   const btn=document.getElementById('anki-memo-toggle');
   view.textContent=memo||'（メモはまだありません）';
-  view.style.display='block';edit.style.display='none';save.style.display='none';htWrap.style.display='none';
+  view.style.display='block';edit.style.display='none';save.style.display='none';
   btn.textContent='編集';
 
   renderStudyCard();
@@ -1373,7 +1332,7 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
   const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;trackDaily(r,currentDeck);
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
-  await updateCard(card.id,upd);await saveStats();await updateDeckHashtags(currentDeck);
+  await updateCard(card.id,upd);await saveStats();
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
   studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
   renderStudyFilters();
