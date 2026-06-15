@@ -301,38 +301,6 @@
         </div>
       </div>
     </div>
-
-    <!-- ノート画面（モーダル） -->
-    <div id="memo-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:100;overflow-y:auto;padding:20px">
-      <div style="width:100%;height:100%">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:8px">
-            <button id="memo-modal-close" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
-            <h2 style="margin:0;font-size:1.2rem">📒 ノート</h2>
-          </div>
-        </div>
-        <textarea id="global-memo" style="width:100%;min-height:600px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:1rem;resize:vertical;word-break:break-word"></textarea>
-
-        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;margin-bottom:250px">
-          <div style="font-size:0.9rem;color:#666;margin-bottom:12px;font-weight:500">🏷️ タグを追加</div>
-          <div style="display:flex;gap:8px;margin-bottom:12px">
-            <input id="global-memo-hashtag-input" type="text" placeholder="#tag を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem">
-            <button id="global-memo-hashtag-add" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9rem">追加</button>
-          </div>
-          <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
-        </div>
-
-        <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none !important;visibility:hidden;pointer-events:none">
-          <div style="font-size:0.9rem;color:#666;margin-bottom:8px;font-weight:500">
-            <span id="global-hashtag-content-title"></span>
-            <button id="global-hashtag-content-edit" style="background:none;border:none;font-size:0.8rem;color:#2196f3;text-decoration:underline;padding:0;margin-left:8px">編集</button>
-          </div>
-          <div id="global-hashtag-content-view" style="font-size:0.95rem;color:#666;white-space:pre-wrap;word-break:break-word;min-height:300px;background:#f9f9f9;padding:12px;border-radius:6px;display:block;overflow:hidden"></div>
-          <textarea id="global-hashtag-content-edit-area" style="width:100%;min-height:500px;padding:12px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:0.95rem;resize:vertical;display:none;margin-top:8px;word-break:break-word"></textarea>
-          <button id="global-hashtag-content-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:0.9rem">保存</button>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- タグ管理 -->
@@ -342,6 +310,38 @@
       <h2 style="margin:0;font-size:1.2rem">🏷️ タグ</h2>
     </div>
     <div id="tags-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+
+  <!-- ノート画面（モーダル） -->
+  <div id="memo-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:100;overflow-y:auto;padding:20px">
+    <div style="width:100%;height:100%">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="memo-modal-close" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
+          <h2 style="margin:0;font-size:1.2rem">📒 ノート</h2>
+        </div>
+      </div>
+      <textarea id="global-memo" style="width:100%;min-height:600px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:1rem;resize:vertical;word-break:break-word"></textarea>
+
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;margin-bottom:250px">
+        <div style="font-size:0.9rem;color:#666;margin-bottom:12px;font-weight:500">🏷️ タグを追加</div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="global-memo-hashtag-input" type="text" placeholder="#tag を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem">
+          <button id="global-memo-hashtag-add" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9rem">追加</button>
+        </div>
+        <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
+      </div>
+
+      <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none !important;visibility:hidden;pointer-events:none">
+        <div style="font-size:0.9rem;color:#666;margin-bottom:8px;font-weight:500">
+          <span id="global-hashtag-content-title"></span>
+          <button id="global-hashtag-content-edit" style="background:none;border:none;font-size:0.8rem;color:#2196f3;text-decoration:underline;padding:0;margin-left:8px">編集</button>
+        </div>
+        <div id="global-hashtag-content-view" style="font-size:0.95rem;color:#666;white-space:pre-wrap;word-break:break-word;min-height:300px;background:#f9f9f9;padding:12px;border-radius:6px;display:block;overflow:hidden"></div>
+        <textarea id="global-hashtag-content-edit-area" style="width:100%;min-height:500px;padding:12px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:0.95rem;resize:vertical;display:none;margin-top:8px;word-break:break-word"></textarea>
+        <button id="global-hashtag-content-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:0.9rem">保存</button>
+      </div>
+    </div>
   </div>
 
   <!-- タグプレビューモーダル -->
