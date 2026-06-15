@@ -1014,7 +1014,7 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.style.display='';title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();await startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
@@ -1148,7 +1148,7 @@ function getStudyPool(){
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
-function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
+async function startStudy(){await updateDeckHashtags(currentDeck);renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
