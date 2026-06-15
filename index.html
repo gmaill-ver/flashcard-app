@@ -299,7 +299,6 @@
       <button class="anki-rating-btn correct" data-rating="correct">◯</button>
       <button class="anki-rating-btn incorrect" data-rating="incorrect">×</button>
       <button class="anki-rating-btn understood" data-rating="understood">&#x1f44d;</button>
-      <button id="memo-notebook-btn" style="background:none;border:none;font-size:1.8rem;cursor:pointer;padding:4px;margin-left:12px;opacity:0.7;transition:opacity 0.2s" title="ノート">📒</button>
     </div>
     <div class="study-chat" id="study-chat" style="display:none">
       <div class="study-chat-toggle" id="study-chat-toggle">😏 AIに質問する</div>
@@ -1151,7 +1150,7 @@ function renderStudyFilters(){
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
   const pool=currentCategory?categoryCards(currentDeck,currentSubdeck,currentCategory):currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
   const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
-  document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
+  document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('')+'<button id="memo-notebook-btn" style="background:none;border:none;font-size:1.6rem;cursor:pointer;padding:4px 8px;margin-left:8px;opacity:0.7;transition:opacity 0.2s" title="ノート">📒</button>';
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;LS.save('fc_studyFilter',studyFilter);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
   sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
   document.getElementById('study-sort-select').value=studySort||'';
