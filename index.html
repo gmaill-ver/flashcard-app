@@ -1153,7 +1153,7 @@ function getStudyPool(){
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
-async function startStudy(){await updateDeckHashtags(currentDeck);renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
+async function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo();updateDeckHashtags(currentDeck)}
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
