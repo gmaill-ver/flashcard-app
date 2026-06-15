@@ -1068,7 +1068,7 @@ async function navigateTo(page,data){
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'memo':showPage('memo-modal');back.classList.add('visible');title.style.display='none';bc.classList.remove('visible');loadGlobalMemo();break;
-    case'tags':showPage('tags');back.classList.add('visible');title.style.display='none';bc.classList.remove('visible');renderTagsPage();break;
+    case'tags':showPage('tags');back.classList.add('visible');title.style.display='none';bc.classList.remove('visible');await loadGlobalMemo();renderTagsPage();break;
     case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.style.display='';title.textContent='参考書・問題集';break;
   }
@@ -1248,7 +1248,10 @@ function renderGlobalMemoHashtags(){
 }
 
 async function loadGlobalMemo(){
-  if(!currentDeck)return;
+  if(!currentDeck){
+    if(decks.length>0)currentDeck=decks[0].name;
+    else{showToast('デッキがありません');return}
+  }
   const ta=document.getElementById('global-memo');
   const dk=getDeck(currentDeck);
   globalMemoHashtags=dk?.memoHashtags||{};
@@ -1787,8 +1790,18 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
 
 <script>
 document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
-document.getElementById('footer-memo').addEventListener('click',async()=>{if(!currentDeck&&decks.length>0)currentDeck=decks[0].name;document.getElementById('memo-modal').style.display='block';previousPage=currentPage;await loadGlobalMemo()});
-document.getElementById('footer-tags').addEventListener('click',()=>{if(!currentDeck&&decks.length>0)currentDeck=decks[0].name;navigateTo('tags')});
+document.getElementById('footer-memo').addEventListener('click',async()=>{
+  if(decks.length===0){showToast('デッキがありません');return}
+  if(!currentDeck)currentDeck=decks[0].name;
+  previousPage=currentPage;
+  document.getElementById('memo-modal').style.display='block';
+  await loadGlobalMemo();
+});
+document.getElementById('footer-tags').addEventListener('click',async()=>{
+  if(decks.length===0){showToast('デッキがありません');return}
+  if(!currentDeck)currentDeck=decks[0].name;
+  navigateTo('tags');
+});
 </script>
 </body>
 </html>
