@@ -1798,8 +1798,9 @@ document.getElementById('footer-memo').addEventListener('click',async()=>{
   if(!currentDeck)currentDeck=decks[0].name;
   console.log('Opening memo-modal. currentDeck=', currentDeck);
   previousPage=currentPage;
-  document.getElementById('memo-modal').style.display='block';
-  console.log('memo-modal display set to block');
+  const modal = document.getElementById('memo-modal');
+  modal.style.cssText = 'display: block !important; position: fixed !important; inset: 0 !important; background: white !important; z-index: 9999 !important; overflow-y: auto !important; padding: 20px !important;';
+  console.log('memo-modal display set to block. modal element:', modal);
   await loadGlobalMemo();
   console.log('loadGlobalMemo completed');
 });
