@@ -1178,6 +1178,7 @@ function renderStudyCard(){
   const htWrap=document.getElementById('anki-hashtag-wrap');
   const htList=document.getElementById('anki-hashtag-list');
   const dk=getDeck(currentDeck);
+  console.log(`[renderStudyCard] hashtags for ${currentDeck}:`, dk?.hashtags);
   if(dk&&dk.hashtags&&Object.keys(dk.hashtags).length>0){
     htWrap.style.display='block';
     const tags=Object.keys(dk.hashtags).sort();

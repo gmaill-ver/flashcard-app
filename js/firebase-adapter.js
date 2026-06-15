@@ -318,6 +318,7 @@ async function updateDeckHashtags(deckName) {
   }
 
   dk.hashtags = hashtags;
+  console.log(`[updateDeckHashtags] ${deckName}:`, hashtags);
   await saveDecks();
 }
 
