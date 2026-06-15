@@ -1791,11 +1791,18 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
 <script>
 document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
 document.getElementById('footer-memo').addEventListener('click',async()=>{
-  if(decks.length===0){showToast('デッキがありません');return}
+  console.log('Footer memo clicked. decks.length=', decks.length, 'currentDeck=', currentDeck);
+  if(decks.length===0){
+    alert('デッキがありません。設定からデッキを作成してください。');
+    return;
+  }
   if(!currentDeck)currentDeck=decks[0].name;
+  console.log('Opening memo-modal. currentDeck=', currentDeck);
   previousPage=currentPage;
   document.getElementById('memo-modal').style.display='block';
+  console.log('memo-modal display set to block');
   await loadGlobalMemo();
+  console.log('loadGlobalMemo completed');
 });
 document.getElementById('footer-tags').addEventListener('click',async()=>{
   if(decks.length===0){showToast('デッキがありません');return}
