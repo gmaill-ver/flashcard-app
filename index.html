@@ -1411,6 +1411,8 @@ document.addEventListener('click',e=>{
 
   if(closeBtn){
     const modal=document.getElementById('memo-modal');
+    if(globalMemoTimer)clearTimeout(globalMemoTimer);
+    saveGlobalMemo();
     modal.style.display='none';
   }
 });
