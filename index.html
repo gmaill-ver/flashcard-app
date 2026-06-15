@@ -250,7 +250,6 @@
     <h1 id="header-title">デッキ</h1>
     <span class="header-breadcrumb" id="header-breadcrumb"></span>
     <div class="header-actions">
-      <button class="header-icon-btn" id="memo-notebook-btn" title="疑問ノート" style="display:none">📒</button>
       <button class="header-icon-btn" id="affiliate-btn" title="参考書">&#x1f4da;</button>
       <button class="header-icon-btn" id="stats-btn" title="統計">&#x1f4ca;</button>
       <button class="header-icon-btn" id="settings-btn" title="設定">&#x2699;</button>
@@ -994,8 +993,7 @@ async function initApp(){showLoading();await loadData();await seedKenpo();await 
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const memoBtn=document.getElementById('memo-notebook-btn');
-  memoBtn.style.display=id==='study'?'block':'none';
+  document.getElementById('memo-modal').style.display='none';
 }
 function returnFromOverlay(){
   currentPage=previousPage;
@@ -1154,7 +1152,7 @@ function renderStudyFilters(){
   const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;LS.save('fc_studyFilter',studyFilter);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
-  sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
+  sortEl.innerHTML='<button class="study-icon-btn" id="memo-notebook-btn" title="疑問ノート">📒</button><select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
   document.getElementById('study-sort-select').value=studySort||'';
   document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
 }
@@ -1263,20 +1261,21 @@ document.getElementById('global-memo').addEventListener('input',()=>{
   globalMemoTimer=setTimeout(saveGlobalMemo,2000);
 });
 
-/* モーダル制御 */
-document.getElementById('memo-notebook-btn').addEventListener('click',()=>{
-  const modal=document.getElementById('memo-modal');
-  const study=document.getElementById('page-study');
-  modal.style.display='block';
-  study.style.display='none';
-  loadGlobalMemo();
-});
+/* モーダル制御（動的に作成） */
+document.addEventListener('click',e=>{
+  const memoBtn=e.target.closest('#memo-notebook-btn');
+  const closeBtn=e.target.closest('#memo-modal-close');
 
-document.getElementById('memo-modal-close').addEventListener('click',()=>{
-  const modal=document.getElementById('memo-modal');
-  const study=document.getElementById('page-study');
-  modal.style.display='none';
-  study.style.display='block';
+  if(memoBtn){
+    const modal=document.getElementById('memo-modal');
+    modal.style.display='block';
+    loadGlobalMemo();
+  }
+
+  if(closeBtn){
+    const modal=document.getElementById('memo-modal');
+    modal.style.display='none';
+  }
 });
 
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
