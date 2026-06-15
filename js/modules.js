@@ -126,31 +126,6 @@ function parseCSVLine(line) {
   return r;
 }
 
-/* ========== コピー機能 ========== */
-function copyToClipboard(text) {
-  if (!navigator.clipboard) {
-    // フォールバック（古いブラウザ対応）
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      showToast('コピーしました ✓');
-    } catch (e) {
-      showToast('コピー失敗');
-    }
-    document.body.removeChild(ta);
-    return;
-  }
-
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('コピーしました ✓');
-  }).catch(() => {
-    showToast('コピー失敗');
-  });
-}
-
 /* ========== フォーム処理 ========== */
 function resetForm() {
   editingId = null;
