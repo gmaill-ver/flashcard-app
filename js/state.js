@@ -52,7 +52,8 @@ let statsFilterDeck = '';
 let chatHistory = [];
 
 // ハッシュタグ
-let globalMemoHashtags = []; // グローバルノートのハッシュタグ
+let globalMemoHashtags = {}; // グローバルノートのハッシュタグ {tag: メモテキスト}
+let selectedGlobalHashtag = null; // 選択中のハッシュタグ
 
 /* ========== ローカルストレージ管理 ========== */
 const LS = {
