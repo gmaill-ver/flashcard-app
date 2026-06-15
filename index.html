@@ -1047,7 +1047,6 @@ async function initApp(){showLoading();await loadData();await seedKenpo();await 
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  document.getElementById('memo-modal').style.display='none';
 }
 function returnFromOverlay(){
   currentPage=previousPage;
