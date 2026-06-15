@@ -313,7 +313,7 @@
   </div>
 
   <!-- ノート画面（モーダル） -->
-  <div id="memo-modal" style="display:none;position:fixed;inset:0;background:#fff;z-index:100;overflow-y:auto;padding:20px;padding-bottom:100px">
+  <div id="memo-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:70px;background:#fff;z-index:100;overflow-y:auto;padding:20px;padding-bottom:20px">
     <div style="width:100%;height:100%">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:8px">
@@ -1247,40 +1247,33 @@ function renderGlobalMemoHashtags(){
 }
 
 async function loadGlobalMemo(){
-  if(!currentDeck){
-    if(decks.length>0)currentDeck=decks[0].name;
-    else{showToast('デッキがありません');return}
-  }
   const ta=document.getElementById('global-memo');
-  const dk=getDeck(currentDeck);
-  globalMemoHashtags=dk?.memoHashtags||{};
   selectedGlobalHashtag=null;
   document.getElementById('global-hashtag-content-wrap').style.display='none';
   document.getElementById('global-memo-hashtag-list').parentElement.style.marginBottom='150px';
   renderGlobalMemoHashtags();
   if(isGuest){
-    ta.value=LS.load('fc_memo_'+currentDeck,'');
+    ta.value=LS.load('fc_memo','');
     return;
   }
   try{
     const doc=await userDoc().get();
-    const deckMemos=doc.data()?.deckMemos||{};
-    ta.value=deckMemos[currentDeck]||'';
+    const memo=doc.data()?.globalMemo||'';
+    const hashtags=doc.data()?.globalMemoHashtags||{};
+    ta.value=memo;
+    globalMemoHashtags=hashtags;
+    renderGlobalMemoHashtags();
   }catch(e){console.error(e)}
 }
 
 async function saveGlobalMemo(){
-  if(!currentDeck)return;
   const memo=document.getElementById('global-memo').value;
   if(isGuest){
-    LS.save('fc_memo_'+currentDeck,memo);
+    LS.save('fc_memo',memo);
     return;
   }
   try{
-    const doc=await userDoc().get();
-    const deckMemos=doc.data()?.deckMemos||{};
-    deckMemos[currentDeck]=memo;
-    await userDoc().update({deckMemos});
+    await userDoc().update({globalMemo:memo,globalMemoHashtags});
   }catch(e){console.error(e)}
 }
 
