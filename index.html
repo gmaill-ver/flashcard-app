@@ -291,6 +291,11 @@
         </div>
         <div id="anki-memo-view" style="font-size:.9rem;color:#666;white-space:pre-wrap;word-break:break-word;min-height:60px;background:#f9f9f9;padding:8px;border-radius:6px;display:block"></div>
         <textarea id="anki-memo-edit" style="width:100%;min-height:100px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:.9rem;resize:vertical;display:none;margin-top:8px"></textarea>
+        <div id="anki-hashtag-edit-wrap" style="margin-top:12px;display:none">
+          <div style="font-size:.85rem;color:#666;font-weight:500;margin-bottom:6px">🏷️ タグ</div>
+          <textarea id="anki-hashtag-edit" style="width:100%;min-height:60px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;resize:vertical" placeholder="#tag1 #tag2 #tag/subtag"></textarea>
+          <div style="font-size:.75rem;color:#888;margin-top:4px">スペースまたは改行で複数入力</div>
+        </div>
         <button id="anki-memo-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:.9rem">保存</button>
       </div>
       <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
@@ -1177,12 +1182,10 @@ function renderStudyCard(){
   /* ハッシュタグ表示 */
   const htWrap=document.getElementById('anki-hashtag-wrap');
   const htList=document.getElementById('anki-hashtag-list');
-  const dk=getDeck(currentDeck);
-  console.log(`[renderStudyCard] hashtags for ${currentDeck}:`, dk?.hashtags);
-  if(dk&&dk.hashtags&&Object.keys(dk.hashtags).length>0){
+  const cardTags=card&&card.hashtags&&card.hashtags.length>0?card.hashtags:[];
+  if(cardTags.length>0){
     htWrap.style.display='block';
-    const tags=Object.keys(dk.hashtags).sort();
-    htList.innerHTML=tags.map(tag=>`<button class="anki-hashtag" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff;transition:all .2s;opacity:${hashtagFilter===tag?'1':'.7'}">${esc(tag)}</button>`).join('')
+    htList.innerHTML=cardTags.map(tag=>`<button class="anki-hashtag" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff;transition:all .2s;opacity:0.8">${esc(tag)}</button>`).join('')
   }else{
     htWrap.style.display='none'
   }
@@ -1204,17 +1207,7 @@ document.getElementById('anki-card').addEventListener('click',e=>{
   if(e.target.closest('#anki-detail-wrap'))return;
   const htBtn=e.target.closest('.anki-hashtag');
   if(htBtn){
-    const tag=htBtn.dataset.tag;
-    if(hashtagFilter===tag){hashtagFilter=null}else{hashtagFilter=tag}
-    const dk=getDeck(currentDeck);
-    if(dk&&dk.hashtags&&hashtagFilter){
-      const cardIds=dk.hashtags[hashtagFilter]||[];
-      studyCards=studyCards.filter(c=>cardIds.includes(c.id));
-      if(studyCards.length===0){studyCards=[{question:'このタグのカードはありません'}];studyIndex=0;answerShown=false;renderStudyCard();return}
-    }else{
-      studyCards=getStudyPool();
-    }
-    studyIndex=0;answerShown=false;renderStudyCard();
+    showToast(`タグ: ${htBtn.dataset.tag}`);
     return;
   }
   if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}
@@ -1226,12 +1219,17 @@ document.getElementById('anki-memo-toggle').addEventListener('click',()=>{
   const view=document.getElementById('anki-memo-view');
   const edit=document.getElementById('anki-memo-edit');
   const save=document.getElementById('anki-memo-save');
+  const htWrap=document.getElementById('anki-hashtag-edit-wrap');
+  const htEdit=document.getElementById('anki-hashtag-edit');
   const btn=document.getElementById('anki-memo-toggle');
+  const card=studyCards[studyIndex];
   if(view.style.display==='block'){
-    view.style.display='none';edit.style.display='block';save.style.display='block';
+    view.style.display='none';edit.style.display='block';save.style.display='block';htWrap.style.display='block';
+    edit.focus();
+    if(card&&card.hashtags){htEdit.value=card.hashtags.join(' ')}
     btn.textContent='キャンセル';
   }else{
-    view.style.display='block';edit.style.display='none';save.style.display='none';
+    view.style.display='block';edit.style.display='none';save.style.display='none';htWrap.style.display='none';
     btn.textContent='編集';
   }
 });
@@ -1240,19 +1238,31 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
   const card=studyCards[studyIndex];
   if(!card)return;
   const memo=document.getElementById('anki-memo-edit').value.trim();
+  const htInput=document.getElementById('anki-hashtag-edit').value.trim();
+
+  /* ハッシュタグをパース */
+  const hashtags=htInput?htInput.split(/[\s\n]+/).filter(t=>t.startsWith('#')).map(t=>t.slice(1).toLowerCase()):[];
+
   card.memo=memo||undefined;
-  await updateCard(card.id,{memo:memo||null});
+  card.hashtags=hashtags.length>0?hashtags:undefined;
+
+  const upd={memo:memo||null};
+  if(hashtags.length>0)upd.hashtags=hashtags;else upd.hashtags=null;
+
+  await updateCard(card.id,upd);
   await updateDeckHashtags(currentDeck);
 
   /* UI更新 */
   const view=document.getElementById('anki-memo-view');
   const edit=document.getElementById('anki-memo-edit');
   const save=document.getElementById('anki-memo-save');
+  const htWrap=document.getElementById('anki-hashtag-edit-wrap');
   const btn=document.getElementById('anki-memo-toggle');
   view.textContent=memo||'（メモはまだありません）';
-  view.style.display='block';edit.style.display='none';save.style.display='none';
+  view.style.display='block';edit.style.display='none';save.style.display='none';htWrap.style.display='none';
   btn.textContent='編集';
 
+  renderStudyCard();
   showToast('メモを保存しました');
 });
 
