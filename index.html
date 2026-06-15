@@ -1376,11 +1376,7 @@ document.getElementById('global-memo-hashtag-add').addEventListener('click',asyn
   const memoText=memo.value.trim();
   if(!memoText){showToast('ノートにテキストを入力してください');return;}
   globalMemoHashtags[tag]=memoText;
-  const dk=getDeck(currentDeck);
-  if(dk){
-    dk.memoHashtags={...globalMemoHashtags};
-    await saveDecks();
-  }
+  await saveGlobalMemo();
   input.value='';
   memo.value='';
   selectedGlobalHashtag=null;
