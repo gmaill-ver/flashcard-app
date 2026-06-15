@@ -1247,23 +1247,32 @@ function renderGlobalMemoHashtags(){
 }
 
 async function loadGlobalMemo(){
+  console.log('loadGlobalMemo called. isGuest=', isGuest);
   const ta=document.getElementById('global-memo');
+  console.log('textarea element:', ta);
   selectedGlobalHashtag=null;
   document.getElementById('global-hashtag-content-wrap').style.display='none';
   document.getElementById('global-memo-hashtag-list').parentElement.style.marginBottom='150px';
-  renderGlobalMemoHashtags();
   if(isGuest){
+    console.log('Guest mode - loading from LocalStorage');
     ta.value=LS.load('fc_memo','');
+    globalMemoHashtags={};
+    renderGlobalMemoHashtags();
     return;
   }
   try{
+    console.log('Loading from Firestore...');
     const doc=await userDoc().get();
-    const memo=doc.data()?.globalMemo||'';
-    const hashtags=doc.data()?.globalMemoHashtags||{};
+    const data=doc.data();
+    console.log('Firestore data:', data);
+    const memo=data?.globalMemo||'';
+    const hashtags=data?.globalMemoHashtags||{};
+    console.log('memo:', memo, 'hashtags:', hashtags);
     ta.value=memo;
     globalMemoHashtags=hashtags;
     renderGlobalMemoHashtags();
-  }catch(e){console.error(e)}
+    console.log('loadGlobalMemo completed');
+  }catch(e){console.error('loadGlobalMemo error:', e)}
 }
 
 async function saveGlobalMemo(){
