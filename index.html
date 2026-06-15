@@ -294,6 +294,10 @@
         <button id="anki-memo-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:.9rem">保存</button>
       </div>
       <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
+      <div id="anki-hashtag-wrap" style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;display:none">
+        <div style="font-size:.75rem;color:#888;margin-bottom:8px">🏷️ タグ</div>
+        <div id="anki-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
     </div>
     <div class="anki-rating" id="anki-rating" style="display:none">
       <button class="anki-rating-btn correct" data-rating="correct">◯</button>
@@ -1170,6 +1174,18 @@ function renderStudyCard(){
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;if(autoShowDetail){dtE.style.display='block';dtT.textContent='閉じる ▲'}else{dtE.style.display='none';dtT.textContent='詳しく ▼'}}else{dtW.style.display='none'}}
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';dtW.style.display='none'}
 
+  /* ハッシュタグ表示 */
+  const htWrap=document.getElementById('anki-hashtag-wrap');
+  const htList=document.getElementById('anki-hashtag-list');
+  const dk=getDeck(currentDeck);
+  if(dk&&dk.hashtags&&Object.keys(dk.hashtags).length>0){
+    htWrap.style.display='block';
+    const tags=Object.keys(dk.hashtags).sort();
+    htList.innerHTML=tags.map(tag=>`<button class="anki-hashtag" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff;transition:all .2s;opacity:${hashtagFilter===tag?'1':'.7'}">${esc(tag)}</button>`).join('')
+  }else{
+    htWrap.style.display='none'
+  }
+
   /* メモ表示 */
   const memoWrap=document.getElementById('anki-memo-wrap');
   const memoView=document.getElementById('anki-memo-view');
@@ -1185,6 +1201,21 @@ function renderStudyCard(){
 
 document.getElementById('anki-card').addEventListener('click',e=>{
   if(e.target.closest('#anki-detail-wrap'))return;
+  const htBtn=e.target.closest('.anki-hashtag');
+  if(htBtn){
+    const tag=htBtn.dataset.tag;
+    if(hashtagFilter===tag){hashtagFilter=null}else{hashtagFilter=tag}
+    const dk=getDeck(currentDeck);
+    if(dk&&dk.hashtags&&hashtagFilter){
+      const cardIds=dk.hashtags[hashtagFilter]||[];
+      studyCards=studyCards.filter(c=>cardIds.includes(c.id));
+      if(studyCards.length===0){studyCards=[{question:'このタグのカードはありません'}];studyIndex=0;answerShown=false;renderStudyCard();return}
+    }else{
+      studyCards=getStudyPool();
+    }
+    studyIndex=0;answerShown=false;renderStudyCard();
+    return;
+  }
   if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}
 });
 document.getElementById('anki-detail-toggle').addEventListener('click',()=>{const d=document.getElementById('anki-detail'),t=document.getElementById('anki-detail-toggle');if(d.style.display==='none'){d.style.display='block';t.textContent='閉じる ▲'}else{d.style.display='none';t.textContent='詳しく ▼'}});
@@ -1210,6 +1241,7 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
   const memo=document.getElementById('anki-memo-edit').value.trim();
   card.memo=memo||undefined;
   await updateCard(card.id,{memo:memo||null});
+  await updateDeckHashtags(currentDeck);
 
   /* UI更新 */
   const view=document.getElementById('anki-memo-view');
@@ -1283,7 +1315,7 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   if(isPublicStudy){studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;renderStudyCard();return}
   const card=studyCards[studyIndex];const oldRating=card.lastRating;stats.reviews++;stats[r]++;trackDaily(r,currentDeck);
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
-  await updateCard(card.id,upd);await saveStats();
+  await updateCard(card.id,upd);await saveStats();await updateDeckHashtags(currentDeck);
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
   studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
   renderStudyFilters();

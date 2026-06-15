@@ -200,6 +200,8 @@ async function addCard(c, skipMeta) {
       await saveDecks();
     }
   }
+
+  await updateDeckHashtags(c.deck);
 }
 
 async function updateCard(id, data) {
@@ -210,6 +212,8 @@ async function updateCard(id, data) {
 
   if (isGuest) {
     LS.save('fc_cards', cards);
+    const deckName = cards[i].deck;
+    if (deckName) await updateDeckHashtags(deckName);
     return;
   }
 
@@ -218,6 +222,9 @@ async function updateCard(id, data) {
   } catch (e) {
     console.error(e);
   }
+
+  const deckName = cards[i].deck;
+  if (deckName) await updateDeckHashtags(deckName);
 }
 
 async function removeCard(id) {
@@ -243,6 +250,7 @@ async function removeCard(id) {
       }
       await saveDecks();
     }
+    await updateDeckHashtags(old.deck);
   }
 }
 
@@ -291,6 +299,26 @@ function syncCurrentDeckMeta() {
     correct: dc.filter(c => c.lastRating === 'correct').length,
     understood: dc.filter(c => c.lastRating === 'understood').length
   };
+}
+
+/* ========== ハッシュタグ管理 ========== */
+async function updateDeckHashtags(deckName) {
+  const dk = getDeck(deckName);
+  if (!dk) return;
+
+  const deckCards = cards.filter(c => c.deck === deckName);
+  const hashtags = {};
+
+  for (const card of deckCards) {
+    const tags = getCardHashtags(card);
+    for (const tag of tags) {
+      if (!hashtags[tag]) hashtags[tag] = [];
+      hashtags[tag].push(card.id);
+    }
+  }
+
+  dk.hashtags = hashtags;
+  await saveDecks();
 }
 
 async function loadDeckCards(name) {

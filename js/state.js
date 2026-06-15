@@ -51,6 +51,10 @@ let statsFilterDeck = '';
 // Chat
 let chatHistory = [];
 
+// ハッシュタグ
+let hashtagFilter = null; // 選択中のハッシュタグ
+let manageHashtagFilter = ''; // 管理ページでのフィルタ
+
 /* ========== ローカルストレージ管理 ========== */
 const LS = {
   load(k, d) {
