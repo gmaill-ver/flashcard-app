@@ -328,6 +328,15 @@
           <h2 style="margin:0;font-size:1.2rem">📒 ノート</h2>
         </div>
         <textarea id="global-memo" style="width:100%;min-height:500px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:1rem;resize:vertical"></textarea>
+
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee">
+          <div style="font-size:0.9rem;color:#666;margin-bottom:12px;font-weight:500">🏷️ ハッシュタグを管理</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input id="global-memo-hashtag-input" type="text" placeholder="#tag を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem">
+            <button id="global-memo-hashtag-add" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9rem">追加</button>
+          </div>
+          <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1223,15 +1232,12 @@ document.getElementById('anki-memo-toggle').addEventListener('click',()=>{
   const htEdit=document.getElementById('anki-hashtag-edit');
   const btn=document.getElementById('anki-memo-toggle');
   const card=studyCards[studyIndex];
-  console.log('[memo-toggle] clicked, view.display=', view.style.display, 'htWrap=', htWrap);
   if(view.style.display==='block'){
-    console.log('[memo-toggle] showing edit mode');
     view.style.display='none';edit.style.display='block';save.style.display='block';htWrap.style.display='block';
     edit.focus();
     if(card&&card.hashtags){htEdit.value=card.hashtags.join(' ')}
     btn.textContent='キャンセル';
   }else{
-    console.log('[memo-toggle] hiding edit mode');
     view.style.display='block';edit.style.display='none';save.style.display='none';htWrap.style.display='none';
     btn.textContent='編集';
   }
@@ -1246,15 +1252,12 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
   /* ハッシュタグをパース */
   const hashtags=htInput?htInput.split(/[\s\n]+/).filter(t=>t.startsWith('#')).map(t=>t.slice(1).toLowerCase()):[];
 
-  console.log('[memo-save] memo=', memo, 'htInput=', htInput, 'parsed hashtags=', hashtags);
-
   card.memo=memo||undefined;
   card.hashtags=hashtags.length>0?hashtags:undefined;
 
   const upd={memo:memo||null};
   if(hashtags.length>0)upd.hashtags=hashtags;else upd.hashtags=null;
 
-  console.log('[memo-save] saving to Firestore:', upd);
   await updateCard(card.id,upd);
   await updateDeckHashtags(currentDeck);
 
@@ -1275,9 +1278,17 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
 /* グローバルメモ機能 */
 let globalMemoTimer=null;
 
+function renderGlobalMemoHashtags(){
+  const list=document.getElementById('global-memo-hashtag-list');
+  list.innerHTML=globalMemoHashtags.map(tag=>`<button class="global-hashtag-btn" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff;display:flex;align-items:center;gap:6px"><span>${esc(tag)}</span><span style="font-size:.7rem;cursor:pointer">✕</span></button>`).join('')
+}
+
 async function loadGlobalMemo(){
   if(!currentDeck)return;
   const ta=document.getElementById('global-memo');
+  const dk=getDeck(currentDeck);
+  globalMemoHashtags=dk?.memoHashtags||[];
+  renderGlobalMemoHashtags();
   if(isGuest){
     ta.value=LS.load('fc_memo_'+currentDeck,'');
     return;
@@ -1308,6 +1319,36 @@ async function saveGlobalMemo(){
 document.getElementById('global-memo').addEventListener('input',()=>{
   if(globalMemoTimer)clearTimeout(globalMemoTimer);
   globalMemoTimer=setTimeout(saveGlobalMemo,2000);
+});
+
+/* グローバルメモハッシュタグ管理 */
+document.getElementById('global-memo-hashtag-add').addEventListener('click',async()=>{
+  const input=document.getElementById('global-memo-hashtag-input');
+  let tag=input.value.trim();
+  if(!tag)return;
+  if(!tag.startsWith('#'))tag='#'+tag;
+  tag=tag.slice(1).toLowerCase();
+  if(globalMemoHashtags.includes(tag)){showToast('既に追加されています');return}
+  globalMemoHashtags.push(tag);
+  const dk=getDeck(currentDeck);
+  if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
+  input.value='';
+  renderGlobalMemoHashtags();
+  showToast(`タグを追加: #${tag}`);
+});
+
+document.getElementById('global-memo-hashtag-list').addEventListener('click',async(e)=>{
+  const btn=e.target.closest('.global-hashtag-btn');
+  if(!btn)return;
+  const tag=btn.dataset.tag;
+  const idx=globalMemoHashtags.indexOf(tag);
+  if(idx>-1){
+    globalMemoHashtags.splice(idx,1);
+    const dk=getDeck(currentDeck);
+    if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
+    renderGlobalMemoHashtags();
+    showToast(`タグを削除: #${tag}`);
+  }
 });
 
 /* モーダル制御（動的に作成） */
