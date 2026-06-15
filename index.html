@@ -336,6 +336,15 @@
     </div>
   </div>
 
+  <!-- タグ管理 -->
+  <div class="page" id="page-tags" style="padding:20px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+      <button id="back-btn-tags" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
+      <h2 style="margin:0;font-size:1.2rem">🏷️ タグ管理</h2>
+    </div>
+    <div id="tags-list" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+
   <!-- カード管理 -->
   <div class="page" id="page-manage">
     <div class="manage-form">
@@ -1026,11 +1035,13 @@ async function navigateTo(page,data){
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();await startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
+    case'tags':showPage('tags');back.classList.add('visible');title.style.display='none';bc.classList.remove('visible');renderTagsPage();break;
     case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.style.display='';title.textContent='参考書・問題集';break;
   }
 }
 document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
+document.getElementById('back-btn-tags').addEventListener('click',()=>navigateTo('home'));
 document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')returnFromOverlay();else navigateTo('stats')});
 document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')returnFromOverlay();else navigateTo('affiliate')});
 
@@ -1243,6 +1254,34 @@ document.getElementById('global-memo').addEventListener('input',()=>{
   if(globalMemoTimer)clearTimeout(globalMemoTimer);
   globalMemoTimer=setTimeout(saveGlobalMemo,2000);
 });
+
+/* タグ管理ページ */
+function renderTagsPage(){
+  const list=document.getElementById('tags-list');
+  const tags=Object.keys(globalMemoHashtags).sort();
+  if(tags.length===0){
+    list.innerHTML='<p style="color:#999;text-align:center">タグがまだありません</p>';
+    return;
+  }
+  list.innerHTML=tags.map(tag=>`<div style="background:#f5f5f5;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:500;margin-bottom:4px">#${esc(tag)}</div><div style="font-size:.85rem;color:#999">${(globalMemoHashtags[tag]||'').substring(0,50)}...</div></div><button class="tag-edit-btn" data-tag="${esc(tag)}" style="background:#2196f3;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem">編集</button></div>`).join('');
+  document.querySelectorAll('.tag-edit-btn').forEach(b=>{
+    b.addEventListener('click',e=>{
+      const tag=e.target.dataset.tag;
+      const newName=prompt(`タグ名を変更:\n現在: #${tag}`,tag);
+      if(newName&&newName!==tag){
+        const newTag=newName.trim().toLowerCase();
+        if(!newTag){showToast('タグ名を入力してください');return}
+        if(globalMemoHashtags[newTag]!=null){showToast('既に存在するタグです');return}
+        globalMemoHashtags[newTag]=globalMemoHashtags[tag];
+        delete globalMemoHashtags[tag];
+        const dk=getDeck(currentDeck);
+        if(dk){dk.memoHashtags={...globalMemoHashtags};saveDecks()}
+        renderTagsPage();
+        showToast(`タグ名を変更: #${tag} → #${newTag}`);
+      }
+    });
+  });
+}
 
 /* グローバルメモハッシュタグ管理 */
 document.getElementById('global-memo-hashtag-add').addEventListener('click',async()=>{
@@ -1682,6 +1721,19 @@ function esc(t){const d=document.createElement('div');d.textContent=t;return d.i
 function showToast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500)}
 function parseCSVLine(line){const r=[];let c='',q=false;for(let i=0;i<line.length;i++){const ch=line[i];if(q){if(ch==='"'&&line[i+1]==='"'){c+='"';i++}else if(ch==='"'){q=false}else{c+=ch}}else{if(ch==='"'){q=true}else if(ch===','){r.push(c);c=''}else{c+=ch}}}r.push(c);return r}
 if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
+</script>
+
+<!-- フッター -->
+<footer style="position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;border-top:1px solid #ddd;padding:8px 0;z-index:50">
+  <button id="footer-home" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="ホーム">🏠</button>
+  <button id="footer-memo" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="ノート">📒</button>
+  <button id="footer-tags" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="タグ">🏷️</button>
+</footer>
+
+<script>
+document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
+document.getElementById('footer-memo').addEventListener('click',()=>{const modal=document.getElementById('memo-modal');modal.style.display='block';loadGlobalMemo()});
+document.getElementById('footer-tags').addEventListener('click',()=>navigateTo('tags'));
 </script>
 </body>
 </html>
