@@ -1140,14 +1140,20 @@ function renderStudyCard(){
   const card=studyCards[studyIndex];
   document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${studyCards.length}`;
   document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
-  qE.textContent=card.question;aE.textContent=card.answer;
+  qE.textContent=card.question;qE.title='クリックでコピー';aE.textContent=card.answer;aE.title='クリックでコピー';
   const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
   rt.style.display='flex';
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;if(autoShowDetail){dtE.style.display='block';dtT.textContent='閉じる ▲'}else{dtE.style.display='none';dtT.textContent='詳しく ▼'}}else{dtW.style.display='none'}}
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';dtW.style.display='none'}
 }
 
-document.getElementById('anki-card').addEventListener('click',e=>{if(e.target.closest('#anki-detail-wrap'))return;if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}});
+document.getElementById('anki-card').addEventListener('click',e=>{
+  if(e.target.closest('#anki-detail-wrap'))return;
+  const clicked=e.target;
+  if(clicked.id==='anki-question'&&clicked.textContent){copyToClipboard(clicked.textContent);return}
+  if(clicked.id==='anki-answer'&&clicked.textContent){copyToClipboard(clicked.textContent);return}
+  if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}
+});
 document.getElementById('anki-detail-toggle').addEventListener('click',()=>{const d=document.getElementById('anki-detail'),t=document.getElementById('anki-detail-toggle');if(d.style.display==='none'){d.style.display='block';t.textContent='閉じる ▲'}else{d.style.display='none';t.textContent='詳しく ▼'}});
 
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
@@ -1368,7 +1374,21 @@ function addChatMsg(role,content){
   html=html.replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
   html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
   html=html.replace(/\n/g,'<br>');
-  d.innerHTML=`<div class="chat-avatar">${avatar}</div><div class="chat-bubble">${html}</div>`;
+  const bubble=document.createElement('div');
+  bubble.className='chat-bubble';
+  bubble.innerHTML=html;
+  bubble.style.position='relative';
+  const copyBtn=document.createElement('button');
+  copyBtn.className='chat-copy-btn';
+  copyBtn.innerHTML='📋';
+  copyBtn.title='メッセージをコピー';
+  copyBtn.style.cssText='position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:0.9rem;opacity:0.5;transition:opacity 0.2s;padding:0;';
+  copyBtn.addEventListener('mouseover',()=>copyBtn.style.opacity='1');
+  copyBtn.addEventListener('mouseout',()=>copyBtn.style.opacity='0.5');
+  copyBtn.addEventListener('click',e=>{e.stopPropagation();copyToClipboard(content)});
+  bubble.appendChild(copyBtn);
+  d.innerHTML=`<div class="chat-avatar">${avatar}</div>`;
+  d.appendChild(bubble);
   el.appendChild(d);
   el.scrollTop=el.scrollHeight;
 }
