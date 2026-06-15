@@ -54,6 +54,7 @@ let chatHistory = [];
 // ハッシュタグ
 let globalMemoHashtags = {}; // グローバルノートのハッシュタグ {tag: メモテキスト}
 let selectedGlobalHashtag = null; // 選択中のハッシュタグ
+let hashtagManageMode = false; // ハッシュタグ管理モード
 
 /* ========== ローカルストレージ管理 ========== */
 const LS = {

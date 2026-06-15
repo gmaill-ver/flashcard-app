@@ -338,7 +338,7 @@
             <button id="global-hashtag-content-edit" style="background:none;border:none;font-size:0.8rem;color:#2196f3;text-decoration:underline;padding:0;margin-left:8px">編集</button>
           </div>
           <div id="global-hashtag-content-view" style="font-size:0.9rem;color:#666;white-space:pre-wrap;word-break:break-word;min-height:60px;background:#f9f9f9;padding:8px;border-radius:6px;display:block"></div>
-          <textarea id="global-hashtag-content-edit-area" style="width:100%;min-height:100px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:0.9rem;resize:vertical;display:none;margin-top:8px"></textarea>
+          <textarea id="global-hashtag-content-edit-area" style="width:100%;min-height:300px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:0.9rem;resize:vertical;display:none;margin-top:8px"></textarea>
           <button id="global-hashtag-content-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:0.9rem">保存</button>
         </div>
       </div>
@@ -1253,7 +1253,11 @@ let globalMemoTimer=null;
 function renderGlobalMemoHashtags(){
   const list=document.getElementById('global-memo-hashtag-list');
   const tags=Object.keys(globalMemoHashtags).sort();
-  list.innerHTML=tags.map(tag=>`<button class="global-hashtag-btn" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff;display:flex;align-items:center;gap:6px"><span>${esc(tag)}</span><button data-delete-tag="${esc(tag)}" style="background:none;border:none;font-size:.7rem;cursor:pointer;padding:0;color:#999">✕</button></button>`).join('')
+  if(hashtagManageMode){
+    list.innerHTML=tags.map(tag=>`<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #b3d9ff;padding:6px 10px;border-radius:14px;font-size:.8rem"><button class="global-hashtag-btn" data-tag="${esc(tag)}" style="background:none;color:#0066cc;padding:0;border:none;cursor:pointer;flex:1;text-align:left">#${esc(tag)}</button><button data-delete-tag="${esc(tag)}" style="background:none;border:none;font-size:.9rem;cursor:pointer;padding:0;color:#f44336">✕</button></div>`).join('')
+  }else{
+    list.innerHTML=tags.map(tag=>`<button class="global-hashtag-btn" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff">#${esc(tag)}</button>`).join('')
+  }
 }
 
 async function loadGlobalMemo(){
@@ -1315,18 +1319,20 @@ document.getElementById('global-memo-hashtag-add').addEventListener('click',asyn
 });
 
 document.getElementById('global-memo-hashtag-list').addEventListener('click',async(e)=>{
-  const btn=e.target.closest('.global-hashtag-btn');
   const delBtn=e.target.closest('[data-delete-tag]');
-  if(delBtn){
+  if(delBtn&&hashtagManageMode){
     const tag=delBtn.dataset.deleteTag;
-    delete globalMemoHashtags[tag];
-    const dk=getDeck(currentDeck);
-    if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
-    if(selectedGlobalHashtag===tag){selectedGlobalHashtag=null;document.getElementById('global-hashtag-content-wrap').style.display='none'}
-    renderGlobalMemoHashtags();
-    showToast(`タグを削除: #${tag}`);
+    if(confirm(`#${tag} を削除しますか？`)){
+      delete globalMemoHashtags[tag];
+      const dk=getDeck(currentDeck);
+      if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
+      if(selectedGlobalHashtag===tag){selectedGlobalHashtag=null;document.getElementById('global-hashtag-content-wrap').style.display='none'}
+      renderGlobalMemoHashtags();
+      showToast(`削除しました: #${tag}`);
+    }
     return;
   }
+  const btn=e.target.closest('.global-hashtag-btn');
   if(btn){
     const tag=btn.dataset.tag;
     selectedGlobalHashtag=tag;
@@ -1385,8 +1391,15 @@ document.addEventListener('click',e=>{
   if(settingsBtn){
     const tags=Object.keys(globalMemoHashtags).sort();
     if(tags.length===0){showToast('ハッシュタグがまだありません');return}
-    const msg=`管理するタグ:\n${tags.map(t=>`#${t}`).join('\n')}\n\nタグボタンの✕でも削除できます`;
-    alert(msg);
+    hashtagManageMode=!hashtagManageMode;
+    renderGlobalMemoHashtags();
+    if(hashtagManageMode){
+      settingsBtn.style.opacity='1';
+      showToast('タグ削除モード: タグの✕ボタンで削除');
+    }else{
+      settingsBtn.style.opacity='0.6';
+      showToast('タグ削除モード終了');
+    }
     return;
   }
 
