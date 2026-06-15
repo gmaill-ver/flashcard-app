@@ -310,7 +310,7 @@
             <button id="memo-modal-close" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
             <h2 style="margin:0;font-size:1.2rem">📒 ノート</h2>
           </div>
-          <button id="memo-modal-settings" style="background:none;border:none;font-size:1.2rem;cursor:pointer" title="ハッシュタグ管理">⚙️</button>
+          <button id="memo-modal-settings" style="background:none;border:none;font-size:1.2rem;cursor:pointer;display:none" title="ハッシュタグ管理">⚙️</button>
         </div>
         <textarea id="global-memo" style="width:100%;min-height:600px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:1rem;resize:vertical;word-break:break-word"></textarea>
 
@@ -323,7 +323,7 @@
           <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
         </div>
 
-        <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none">
+        <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none;visibility:hidden;pointer-events:none">
           <div style="font-size:0.9rem;color:#666;margin-bottom:8px;font-weight:500">
             <span id="global-hashtag-content-title"></span>
             <button id="global-hashtag-content-edit" style="background:none;border:none;font-size:0.8rem;color:#2196f3;text-decoration:underline;padding:0;margin-left:8px">編集</button>
@@ -1256,6 +1256,7 @@ document.getElementById('global-memo').addEventListener('input',()=>{
 });
 
 /* タグ管理ページ */
+let selectedTagForPreview=null;
 function renderTagsPage(){
   const list=document.getElementById('tags-list');
   const tags=Object.keys(globalMemoHashtags).sort();
@@ -1263,10 +1264,19 @@ function renderTagsPage(){
     list.innerHTML='<p style="color:#999;text-align:center">タグがまだありません</p>';
     return;
   }
-  list.innerHTML=tags.map(tag=>`<div style="background:#f5f5f5;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:500;margin-bottom:4px">#${esc(tag)}</div><div style="font-size:.85rem;color:#999">${(globalMemoHashtags[tag]||'').substring(0,50)}...</div></div><button class="tag-edit-btn" data-tag="${esc(tag)}" style="background:#2196f3;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem">編集</button></div>`).join('');
-  document.querySelectorAll('.tag-edit-btn').forEach(b=>{
+  list.innerHTML=tags.map(tag=>`<div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center"><button class="tag-btn" data-tag="${esc(tag)}" style="background:none;border:none;color:#0066cc;cursor:pointer;font-size:1rem;text-align:left;padding:0;flex:1">#${esc(tag)}</button><button class="tag-edit-btn" data-tag="${esc(tag)}" style="background:#2196f3;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem;margin-left:8px">編集</button><button class="tag-del-btn" data-tag="${esc(tag)}" style="background:#f44336;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem;margin-left:4px">削除</button></div>`).join('');
+  document.querySelectorAll('.tag-btn').forEach(b=>{
     b.addEventListener('click',e=>{
-      const tag=e.target.dataset.tag;
+      const tag=b.dataset.tag;
+      selectedTagForPreview=tag;
+      const content=globalMemoHashtags[tag]||'（内容はまだありません）';
+      alert(`#${tag}\n\n${content}`);
+    });
+  });
+  document.querySelectorAll('.tag-edit-btn').forEach(b=>{
+    b.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const tag=b.dataset.tag;
       const newName=prompt(`タグ名を変更:\n現在: #${tag}`,tag);
       if(newName&&newName!==tag){
         const newTag=newName.trim().toLowerCase();
@@ -1275,9 +1285,22 @@ function renderTagsPage(){
         globalMemoHashtags[newTag]=globalMemoHashtags[tag];
         delete globalMemoHashtags[tag];
         const dk=getDeck(currentDeck);
-        if(dk){dk.memoHashtags={...globalMemoHashtags};saveDecks()}
+        if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
         renderTagsPage();
         showToast(`タグ名を変更: #${tag} → #${newTag}`);
+      }
+    });
+  });
+  document.querySelectorAll('.tag-del-btn').forEach(b=>{
+    b.addEventListener('click',async e=>{
+      e.stopPropagation();
+      const tag=b.dataset.tag;
+      if(confirm(`#${tag} を削除しますか？`)){
+        delete globalMemoHashtags[tag];
+        const dk=getDeck(currentDeck);
+        if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
+        renderTagsPage();
+        showToast(`削除しました: #${tag}`);
       }
     });
   });
@@ -1725,14 +1748,14 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
 
 <!-- フッター -->
 <footer style="position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;border-top:1px solid #ddd;padding:8px 0;z-index:50">
-  <button id="footer-home" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="ホーム">🏠</button>
-  <button id="footer-memo" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="ノート">📒</button>
+  <button id="footer-home" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="ホーム">🏠</button>
+  <button id="footer-memo" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="ノート">📒</button>
   <button id="footer-tags" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="タグ">🏷️</button>
 </footer>
 
 <script>
 document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
-document.getElementById('footer-memo').addEventListener('click',()=>{const modal=document.getElementById('memo-modal');modal.style.display='block';loadGlobalMemo()});
+document.getElementById('footer-memo').addEventListener('click',async()=>{const modal=document.getElementById('memo-modal');modal.style.display='block';await loadGlobalMemo()});
 document.getElementById('footer-tags').addEventListener('click',()=>navigateTo('tags'));
 </script>
 </body>
