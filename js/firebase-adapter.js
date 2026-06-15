@@ -309,8 +309,11 @@ async function updateDeckHashtags(deckName) {
   const deckCards = cards.filter(c => c.deck === deckName);
   const hashtags = {};
 
+  console.log(`[updateDeckHashtags] processing ${deckCards.length} cards from ${deckName}`);
+
   for (const card of deckCards) {
     const tags = getCardHashtags(card);
+    console.log(`  card ${card.id}: tags=`, tags);
     for (const tag of tags) {
       if (!hashtags[tag]) hashtags[tag] = [];
       hashtags[tag].push(card.id);
@@ -318,7 +321,7 @@ async function updateDeckHashtags(deckName) {
   }
 
   dk.hashtags = hashtags;
-  console.log(`[updateDeckHashtags] ${deckName}:`, hashtags);
+  console.log(`[updateDeckHashtags] final hashtags for ${deckName}:`, Object.keys(hashtags), hashtags);
   await saveDecks();
 }
 

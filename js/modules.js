@@ -131,7 +131,9 @@ function extractHashtags(text) {
   if (!text) return new Set();
   const regex = /#[\w/\-一-鿿]+/g;
   const matches = text.match(regex) || [];
-  return new Set(matches.map(m => m.slice(1).toLowerCase()));
+  const result = new Set(matches.map(m => m.slice(1).toLowerCase()));
+  if (matches.length > 0) console.log(`[extractHashtags] text="${text}" → tags=`, result);
+  return result;
 }
 
 function getCardHashtags(card) {
@@ -140,6 +142,7 @@ function getCardHashtags(card) {
   if (card.answer) extractHashtags(card.answer).forEach(t => tags.add(t));
   if (card.detail) extractHashtags(card.detail).forEach(t => tags.add(t));
   if (card.memo) extractHashtags(card.memo).forEach(t => tags.add(t));
+  if (tags.size > 0) console.log(`[getCardHashtags] card ${card.id}:`, tags);
   return tags;
 }
 
