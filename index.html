@@ -345,6 +345,35 @@
     <div id="tags-list" style="display:flex;flex-direction:column;gap:12px"></div>
   </div>
 
+  <!-- タグプレビューモーダル -->
+  <div id="tag-preview-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;padding:20px;overflow:auto">
+    <div style="background:#fff;border-radius:12px;padding:20px;max-width:500px;margin:0 auto;margin-top:80px">
+      <h3 id="tag-preview-title" style="margin:0 0 16px;color:#333;font-size:1.2rem"></h3>
+      <div id="tag-preview-content" style="font-size:0.95rem;color:#666;white-space:pre-wrap;word-break:break-word;max-height:400px;overflow:auto;background:#f9f9f9;padding:12px;border-radius:6px;margin-bottom:16px"></div>
+      <button onclick="document.getElementById('tag-preview-modal').style.display='none'" style="background:#2196f3;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;width:100%;font-size:0.9rem">閉じる</button>
+    </div>
+  </div>
+
+  <!-- タグ編集モーダル -->
+  <div id="tag-editor-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;padding:20px;overflow:auto">
+    <div style="background:#fff;border-radius:12px;padding:20px;max-width:500px;margin:0 auto;margin-top:80px">
+      <h3 style="margin:0 0 16px;color:#333">タグを編集</h3>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:0.9rem;color:#666;margin-bottom:8px">タグ名</label>
+        <input id="tag-editor-name" type="text" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:0.9rem;color:#666;margin-bottom:8px">メモ内容</label>
+        <textarea id="tag-editor-content" style="width:100%;min-height:300px;padding:10px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:0.9rem;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="tag-editor-save" style="flex:1;background:#2196f3;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:0.9rem">保存</button>
+        <button id="tag-editor-delete" style="flex:1;background:#f44336;color:#fff;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:0.9rem">削除</button>
+        <button onclick="document.getElementById('tag-editor-modal').style.display='none'" style="flex:1;background:#ccc;color:#333;border:none;padding:10px;border-radius:6px;cursor:pointer;font-size:0.9rem">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
   <!-- カード管理 -->
   <div class="page" id="page-manage">
     <div class="manage-form">
@@ -1035,6 +1064,7 @@ async function navigateTo(page,data){
     case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetStudyChat();await startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
+    case'memo':showPage('memo-modal');back.classList.add('visible');title.style.display='none';bc.classList.remove('visible');loadGlobalMemo();break;
     case'tags':showPage('tags');back.classList.add('visible');title.style.display='none';bc.classList.remove('visible');renderTagsPage();break;
     case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.style.display='';title.textContent='参考書・問題集';break;
@@ -1264,44 +1294,54 @@ function renderTagsPage(){
     list.innerHTML='<p style="color:#999;text-align:center">タグがまだありません</p>';
     return;
   }
-  list.innerHTML=tags.map(tag=>`<div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center"><button class="tag-btn" data-tag="${esc(tag)}" style="background:none;border:none;color:#0066cc;cursor:pointer;font-size:1rem;text-align:left;padding:0;flex:1">#${esc(tag)}</button><button class="tag-edit-btn" data-tag="${esc(tag)}" style="background:#2196f3;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem;margin-left:8px">編集</button><button class="tag-del-btn" data-tag="${esc(tag)}" style="background:#f44336;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem;margin-left:4px">削除</button></div>`).join('');
+  list.innerHTML=tags.map(tag=>`<div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center"><button class="tag-btn" data-tag="${esc(tag)}" style="background:none;border:none;color:#0066cc;cursor:pointer;font-size:1rem;text-align:left;padding:0;flex:1">#${esc(tag)}</button><button class="tag-edit-btn" data-tag="${esc(tag)}" style="background:#2196f3;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem;margin-left:8px">編集</button></div>`).join('');
   document.querySelectorAll('.tag-btn').forEach(b=>{
     b.addEventListener('click',e=>{
       const tag=b.dataset.tag;
       selectedTagForPreview=tag;
-      const content=globalMemoHashtags[tag]||'（内容はまだありません）';
-      alert(`#${tag}\n\n${content}`);
+      const content=globalMemoHashtags[tag]||'';
+      const modal=document.getElementById('tag-preview-modal');
+      document.getElementById('tag-preview-title').textContent=`#${esc(tag)}`;
+      document.getElementById('tag-preview-content').textContent=content;
+      modal.style.display='block';
     });
   });
   document.querySelectorAll('.tag-edit-btn').forEach(b=>{
     b.addEventListener('click',async e=>{
       e.stopPropagation();
       const tag=b.dataset.tag;
-      const newName=prompt(`タグ名を変更:\n現在: #${tag}`,tag);
-      if(newName&&newName!==tag){
-        const newTag=newName.trim().toLowerCase();
-        if(!newTag){showToast('タグ名を入力してください');return}
-        if(globalMemoHashtags[newTag]!=null){showToast('既に存在するタグです');return}
-        globalMemoHashtags[newTag]=globalMemoHashtags[tag];
+      const oldContent=globalMemoHashtags[tag]||'';
+      const editorModal=document.getElementById('tag-editor-modal');
+      const nameInput=document.getElementById('tag-editor-name');
+      const contentArea=document.getElementById('tag-editor-content');
+      const saveBtn=document.getElementById('tag-editor-save');
+      const delBtn=document.getElementById('tag-editor-delete');
+      nameInput.value=tag;
+      contentArea.value=oldContent;
+      editorModal.style.display='block';
+      saveBtn.onclick=async()=>{
+        const newName=nameInput.value.trim().toLowerCase();
+        const newContent=contentArea.value;
+        if(!newName){showToast('タグ名を入力してください');return}
+        if(newName!==tag&&globalMemoHashtags[newName]!=null){showToast('既に存在するタグです');return}
         delete globalMemoHashtags[tag];
+        globalMemoHashtags[newName]=newContent;
         const dk=getDeck(currentDeck);
         if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
+        editorModal.style.display='none';
         renderTagsPage();
-        showToast(`タグ名を変更: #${tag} → #${newTag}`);
-      }
-    });
-  });
-  document.querySelectorAll('.tag-del-btn').forEach(b=>{
-    b.addEventListener('click',async e=>{
-      e.stopPropagation();
-      const tag=b.dataset.tag;
-      if(confirm(`#${tag} を削除しますか？`)){
-        delete globalMemoHashtags[tag];
-        const dk=getDeck(currentDeck);
-        if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
-        renderTagsPage();
-        showToast(`削除しました: #${tag}`);
-      }
+        showToast(`タグを更新: #${tag} → #${newName}`);
+      };
+      delBtn.onclick=async()=>{
+        if(confirm(`#${tag} を削除しますか？`)){
+          delete globalMemoHashtags[tag];
+          const dk=getDeck(currentDeck);
+          if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
+          editorModal.style.display='none';
+          renderTagsPage();
+          showToast(`削除しました: #${tag}`);
+        }
+      };
     });
   });
 }
@@ -1750,13 +1790,15 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
 <footer style="position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;border-top:1px solid #ddd;padding:8px 0;z-index:50">
   <button id="footer-home" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="ホーム">🏠</button>
   <button id="footer-memo" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="ノート">📒</button>
-  <button id="footer-tags" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="タグ">🏷️</button>
+  <button id="footer-tags" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="タグ">🏷️</button>
+  <button id="footer-settings" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="設定">⚙️</button>
 </footer>
 
 <script>
 document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
-document.getElementById('footer-memo').addEventListener('click',async()=>{const modal=document.getElementById('memo-modal');modal.style.display='block';await loadGlobalMemo()});
+document.getElementById('footer-memo').addEventListener('click',()=>navigateTo('memo'));
 document.getElementById('footer-tags').addEventListener('click',()=>navigateTo('tags'));
+document.getElementById('footer-settings').addEventListener('click',()=>document.getElementById('settings-modal').classList.add('active'));
 </script>
 </body>
 </html>
