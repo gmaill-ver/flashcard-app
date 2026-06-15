@@ -1210,7 +1210,7 @@ async function loadGlobalMemo(){
   globalMemoHashtags=dk?.memoHashtags||{};
   selectedGlobalHashtag=null;
   document.getElementById('global-hashtag-content-wrap').style.display='none';
-  document.getElementById('global-memo-hashtag-list').style.marginBottom='150px';
+  document.getElementById('global-memo-hashtag-list').parentElement.style.marginBottom='150px';
   renderGlobalMemoHashtags();
   if(isGuest){
     ta.value=LS.load('fc_memo_'+currentDeck,'');
@@ -1320,7 +1320,7 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
     view.textContent=globalMemoHashtags[tag]||'（内容はまだありません）';
     area.value=globalMemoHashtags[tag]||'';
     wrap.style.display='block';
-    document.getElementById('global-memo-hashtag-list').style.marginBottom='0';
+    document.getElementById('global-memo-hashtag-list').parentElement.style.marginBottom='0';
   }
 });
 
