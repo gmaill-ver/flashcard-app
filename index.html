@@ -1797,7 +1797,7 @@ document.getElementById('footer-memo').addEventListener('click',async()=>{
   console.log('Opening memo-modal. currentDeck=', currentDeck);
   previousPage=currentPage;
   const modal = document.getElementById('memo-modal');
-  modal.style.cssText = 'display: block !important; position: fixed !important; inset: 0 !important; background: white !important; z-index: 9999 !important; overflow-y: auto !important; padding: 20px !important;';
+  modal.style.cssText = 'display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 70px !important; background: white !important; z-index: 9999 !important; overflow-y: auto !important; padding: 20px !important;';
   console.log('memo-modal display set to block. modal element:', modal);
   await loadGlobalMemo();
   console.log('loadGlobalMemo completed');
