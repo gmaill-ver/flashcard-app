@@ -1308,12 +1308,20 @@ document.getElementById('global-memo-hashtag-add').addEventListener('click',asyn
   if(!tag)return;
   if(!tag.startsWith('#'))tag='#'+tag;
   tag=tag.slice(1).toLowerCase();
+  if(!tag||tag===''){showToast('タグを入力してください');return;}
   if(globalMemoHashtags[tag]!=null){showToast('既に追加されています');return}
-  globalMemoHashtags[tag]=memo.value;
+  const memoText=memo.value.trim();
+  if(!memoText){showToast('ノートにテキストを入力してください');return;}
+  globalMemoHashtags[tag]=memoText;
   const dk=getDeck(currentDeck);
-  if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
+  if(dk){
+    dk.memoHashtags={...globalMemoHashtags};
+    await saveDecks();
+  }
   input.value='';
   memo.value='';
+  selectedGlobalHashtag=null;
+  document.getElementById('global-hashtag-content-wrap').style.display='none';
   renderGlobalMemoHashtags();
   showToast(`タグを追加: #${tag}`);
 });
@@ -1325,7 +1333,10 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
     if(confirm(`#${tag} を削除しますか？`)){
       delete globalMemoHashtags[tag];
       const dk=getDeck(currentDeck);
-      if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
+      if(dk){
+        dk.memoHashtags={...globalMemoHashtags};
+        await saveDecks();
+      }
       if(selectedGlobalHashtag===tag){selectedGlobalHashtag=null;document.getElementById('global-hashtag-content-wrap').style.display='none'}
       renderGlobalMemoHashtags();
       showToast(`削除しました: #${tag}`);
@@ -1370,7 +1381,10 @@ document.getElementById('global-hashtag-content-save').addEventListener('click',
   const content=area.value.trim();
   globalMemoHashtags[tag]=content||'';
   const dk=getDeck(currentDeck);
-  if(dk){dk.memoHashtags=globalMemoHashtags;await saveDecks()}
+  if(dk){
+    dk.memoHashtags={...globalMemoHashtags};
+    await saveDecks();
+  }
 
   /* UI更新 */
   const view=document.getElementById('global-hashtag-content-view');
