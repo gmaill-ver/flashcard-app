@@ -284,15 +284,6 @@
       <hr class="anki-divider" id="anki-divider" style="display:none">
       <div class="anki-card-text anki-answer-section" id="anki-answer" style="display:none"></div>
       <div id="anki-detail-wrap" style="display:none"><span id="anki-detail-toggle" style="color:#2196f3;font-size:.82rem;cursor:pointer;margin-top:8px;display:inline-block">詳しく ▼</span><div class="anki-card-text" id="anki-detail" style="display:none;margin-top:8px;font-size:.9rem;color:#666;white-space:pre-wrap;word-break:break-word"></div></div>
-      <div id="anki-memo-wrap" style="margin-top:16px;padding-top:12px;border-top:1px solid #eee;display:none;width:100%">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-          <span style="font-size:.85rem;color:#666;font-weight:500">📝 メモ</span>
-          <button id="anki-memo-toggle" style="background:none;border:none;cursor:pointer;font-size:.8rem;color:#2196f3;text-decoration:underline;padding:0">編集</button>
-        </div>
-        <div id="anki-memo-view" style="font-size:.9rem;color:#666;white-space:pre-wrap;word-break:break-word;min-height:60px;background:#f9f9f9;padding:8px;border-radius:6px;display:block"></div>
-        <textarea id="anki-memo-edit" style="width:100%;min-height:100px;padding:8px;border:1px solid #ddd;border-radius:6px;font-family:inherit;font-size:.9rem;resize:vertical;display:none;margin-top:8px"></textarea>
-        <button id="anki-memo-save" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;display:none;font-size:.9rem">保存</button>
-      </div>
       <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
     </div>
     <div class="anki-rating" id="anki-rating" style="display:none">
@@ -1191,18 +1182,6 @@ function renderStudyCard(){
   rt.style.display='flex';
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;if(autoShowDetail){dtE.style.display='block';dtT.textContent='閉じる ▲'}else{dtE.style.display='none';dtT.textContent='詳しく ▼'}}else{dtW.style.display='none'}}
   else{lb.textContent='問題';aE.style.display='none';dv.style.display='none';dtW.style.display='none'}
-
-  /* メモ表示 */
-  const memoWrap=document.getElementById('anki-memo-wrap');
-  const memoView=document.getElementById('anki-memo-view');
-  const memoEdit=document.getElementById('anki-memo-edit');
-  if(!isPublicStudy){
-    memoWrap.style.display='block';
-    memoView.textContent=card.memo||'（メモはまだありません）';
-    memoEdit.value=card.memo||'';
-  }else{
-    memoWrap.style.display='none'
-  }
 }
 
 document.getElementById('anki-card').addEventListener('click',e=>{
@@ -1210,42 +1189,6 @@ document.getElementById('anki-card').addEventListener('click',e=>{
   if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}
 });
 document.getElementById('anki-detail-toggle').addEventListener('click',()=>{const d=document.getElementById('anki-detail'),t=document.getElementById('anki-detail-toggle');if(d.style.display==='none'){d.style.display='block';t.textContent='閉じる ▲'}else{d.style.display='none';t.textContent='詳しく ▼'}});
-
-/* メモ機能 */
-document.getElementById('anki-memo-toggle').addEventListener('click',()=>{
-  const view=document.getElementById('anki-memo-view');
-  const edit=document.getElementById('anki-memo-edit');
-  const save=document.getElementById('anki-memo-save');
-  const btn=document.getElementById('anki-memo-toggle');
-  if(view.style.display==='block'){
-    view.style.display='none';edit.style.display='block';save.style.display='block';
-    edit.focus();
-    btn.textContent='キャンセル';
-  }else{
-    view.style.display='block';edit.style.display='none';save.style.display='none';
-    btn.textContent='編集';
-  }
-});
-
-document.getElementById('anki-memo-save').addEventListener('click',async()=>{
-  const card=studyCards[studyIndex];
-  if(!card)return;
-  const memo=document.getElementById('anki-memo-edit').value.trim();
-  card.memo=memo||undefined;
-  await updateCard(card.id,{memo:memo||null});
-
-  /* UI更新 */
-  const view=document.getElementById('anki-memo-view');
-  const edit=document.getElementById('anki-memo-edit');
-  const save=document.getElementById('anki-memo-save');
-  const btn=document.getElementById('anki-memo-toggle');
-  view.textContent=memo||'（メモはまだありません）';
-  view.style.display='block';edit.style.display='none';save.style.display='none';
-  btn.textContent='編集';
-
-  renderStudyCard();
-  showToast('メモを保存しました');
-});
 
 /* グローバルメモ機能 */
 let globalMemoTimer=null;
