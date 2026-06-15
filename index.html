@@ -310,17 +310,16 @@
             <button id="memo-modal-close" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
             <h2 style="margin:0;font-size:1.2rem">📒 ノート</h2>
           </div>
-          <button id="memo-modal-settings" style="background:none;border:none;font-size:1.2rem;cursor:pointer" title="タグ管理">🏷️</button>
         </div>
         <textarea id="global-memo" style="width:100%;min-height:600px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:1rem;resize:vertical;word-break:break-word"></textarea>
 
         <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;margin-bottom:250px">
-          <div style="font-size:0.9rem;color:#666;margin-bottom:12px;font-weight:500;display:none">🏷️ ハッシュタグを管理</div>
-          <div style="display:none;gap:8px;margin-bottom:12px">
+          <div style="font-size:0.9rem;color:#666;margin-bottom:12px;font-weight:500">🏷️ タグを追加</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
             <input id="global-memo-hashtag-input" type="text" placeholder="#tag を入力" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem">
             <button id="global-memo-hashtag-add" style="background:#2196f3;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9rem">追加</button>
           </div>
-          <div id="global-memo-hashtag-list" style="display:none;flex-wrap:wrap;gap:6px;min-height:32px"></div>
+          <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
         </div>
 
         <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none !important;visibility:hidden;pointer-events:none">
@@ -1484,49 +1483,6 @@ document.addEventListener('click',e=>{
   const closeBtn=e.target.closest('#memo-modal-close');
   const settingsBtn=e.target.closest('#memo-modal-settings');
 
-  if(settingsBtn){
-    const tags=Object.keys(globalMemoHashtags).sort();
-    if(tags.length===0){showToast('タグがまだありません');return}
-    const list=document.getElementById('tags-settings-list');
-    list.innerHTML=tags.map(tag=>`<button class="tag-settings-chip-memo" data-tag="${esc(tag)}" style="background:#f0f0f0;border:1px solid #ddd;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.9rem;color:#333;white-space:nowrap">#${esc(tag)}</button>`).join('');
-    document.querySelectorAll('.tag-settings-chip-memo').forEach(b=>{
-      b.addEventListener('click',async e=>{
-        const tag=b.dataset.tag;
-        const oldContent=globalMemoHashtags[tag]||'';
-        const editorModal=document.getElementById('tag-editor-modal');
-        const nameInput=document.getElementById('tag-editor-name');
-        const contentArea=document.getElementById('tag-editor-content');
-        const saveBtn=document.getElementById('tag-editor-save');
-        const delBtn=document.getElementById('tag-editor-delete');
-        nameInput.value=tag;
-        contentArea.value=oldContent;
-        editorModal.style.display='block';
-        saveBtn.onclick=async()=>{
-          const newName=nameInput.value.trim().toLowerCase();
-          const newContent=contentArea.value;
-          if(!newName){showToast('タグ名を入力してください');return}
-          if(newName!==tag&&globalMemoHashtags[newName]!=null){showToast('既に存在するタグです');return}
-          delete globalMemoHashtags[tag];
-          globalMemoHashtags[newName]=newContent;
-          const dk=getDeck(currentDeck);
-          if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
-          editorModal.style.display='none';
-          showToast(`タグを更新: #${tag} → #${newName}`);
-        };
-        delBtn.onclick=async()=>{
-          if(confirm(`#${tag} を削除しますか？`)){
-            delete globalMemoHashtags[tag];
-            const dk=getDeck(currentDeck);
-            if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
-            editorModal.style.display='none';
-            showToast(`削除しました: #${tag}`);
-          }
-        };
-      });
-    });
-    document.getElementById('tags-settings-section').style.display='block';
-    return;
-  }
 
   if(memoBtn){
     const modal=document.getElementById('memo-modal');
