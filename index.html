@@ -280,9 +280,15 @@
     <div class="study-progress"><span id="study-progress-text">0 / 0</span><div class="study-progress-bar"><div class="study-progress-fill" id="study-progress-fill" style="width:0%"></div></div></div>
     <div class="anki-card" id="anki-card">
       <span class="anki-card-label" id="anki-label">問題</span>
-      <div class="anki-card-text" id="anki-question"></div>
+      <div style="position:relative">
+        <div class="anki-card-text" id="anki-question"></div>
+        <button class="anki-copy-btn" id="copy-question-btn" title="問題をコピー" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:1rem;opacity:0.6;padding:4px 8px;transition:opacity 0.2s">📋</button>
+      </div>
       <hr class="anki-divider" id="anki-divider" style="display:none">
-      <div class="anki-card-text anki-answer-section" id="anki-answer" style="display:none"></div>
+      <div style="position:relative;display:none" id="answer-wrapper">
+        <div class="anki-card-text anki-answer-section" id="anki-answer"></div>
+        <button class="anki-copy-btn" id="copy-answer-btn" title="答えをコピー" style="position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:1rem;opacity:0.6;padding:4px 8px;transition:opacity 0.2s">📋</button>
+      </div>
       <div id="anki-detail-wrap" style="display:none"><span id="anki-detail-toggle" style="color:#2196f3;font-size:.82rem;cursor:pointer;margin-top:8px;display:inline-block">詳しく ▼</span><div class="anki-card-text" id="anki-detail" style="display:none;margin-top:8px;font-size:.9rem;color:#666;white-space:pre-wrap;word-break:break-word"></div></div>
       <div class="anki-card-stats" id="anki-card-stats" style="display:none"></div>
     </div>
@@ -1142,14 +1148,9 @@ function renderStudyCard(){
   document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
   qE.textContent=card.question;aE.textContent=card.answer;
 
-  /* コピーボタン追加 */
-  qE.parentElement.style.position='relative';
-  let qCopyBtn=qE.parentElement.querySelector('.anki-copy-btn');
-  if(!qCopyBtn){qCopyBtn=document.createElement('button');qCopyBtn.className='anki-copy-btn';qCopyBtn.innerHTML='📋';qCopyBtn.title='問題をコピー';qCopyBtn.style.cssText='position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:0.9rem;opacity:0.6;transition:opacity 0.2s;padding:4px 8px;';qCopyBtn.addEventListener('mouseover',()=>qCopyBtn.style.opacity='1');qCopyBtn.addEventListener('mouseout',()=>qCopyBtn.style.opacity='0.6');qCopyBtn.addEventListener('click',e=>{e.stopPropagation();copyToClipboard(card.question)});qE.parentElement.appendChild(qCopyBtn)}
-
-  aE.parentElement.style.position='relative';
-  let aCopyBtn=aE.parentElement.querySelector('.anki-copy-btn');
-  if(!aCopyBtn){aCopyBtn=document.createElement('button');aCopyBtn.className='anki-copy-btn';aCopyBtn.innerHTML='📋';aCopyBtn.title='答えをコピー';aCopyBtn.style.cssText='position:absolute;top:4px;right:4px;background:none;border:none;cursor:pointer;font-size:0.9rem;opacity:0.6;transition:opacity 0.2s;padding:4px 8px;';aCopyBtn.addEventListener('mouseover',()=>aCopyBtn.style.opacity='1');aCopyBtn.addEventListener('mouseout',()=>aCopyBtn.style.opacity='0.6');aCopyBtn.addEventListener('click',e=>{e.stopPropagation();copyToClipboard(card.answer)});aE.parentElement.appendChild(aCopyBtn)}
+  /* 答えコンテナの表示制御 */
+  const answerWrapper=document.getElementById('answer-wrapper');
+  if(answerShown){answerWrapper.style.display='block'}else{answerWrapper.style.display='none'}
   const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
   rt.style.display='flex';
   if(answerShown){lb.textContent='問題 + 答え';aE.style.display='block';dv.style.display='block';if(card.detail){dtW.style.display='block';dtE.textContent=card.detail;if(autoShowDetail){dtE.style.display='block';dtT.textContent='閉じる ▲'}else{dtE.style.display='none';dtT.textContent='詳しく ▼'}}else{dtW.style.display='none'}}
@@ -1160,6 +1161,23 @@ document.getElementById('anki-card').addEventListener('click',e=>{
   if(e.target.closest('#anki-detail-wrap'))return;
   if(e.target.closest('.anki-copy-btn'))return;
   if(studyCards.length>0){answerShown=!answerShown;renderStudyCard()}
+});
+
+/* コピーボタンのホバー効果とクリック処理 */
+document.addEventListener('mouseover',e=>{
+  if(e.target.classList.contains('anki-copy-btn')){e.target.style.opacity='1'}
+});
+document.addEventListener('mouseout',e=>{
+  if(e.target.classList.contains('anki-copy-btn')){e.target.style.opacity='0.6'}
+});
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.anki-copy-btn');
+  if(!btn)return;
+  e.stopPropagation();
+  const card=studyCards[studyIndex];
+  if(!card)return;
+  if(btn.id==='copy-question-btn'){copyToClipboard(card.question)}
+  else if(btn.id==='copy-answer-btn'){copyToClipboard(card.answer)}
 });
 document.getElementById('anki-detail-toggle').addEventListener('click',()=>{const d=document.getElementById('anki-detail'),t=document.getElementById('anki-detail-toggle');if(d.style.display==='none'){d.style.display='block';t.textContent='閉じる ▲'}else{d.style.display='none';t.textContent='詳しく ▼'}});
 
