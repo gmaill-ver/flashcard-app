@@ -323,7 +323,7 @@
           <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
         </div>
 
-        <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none;visibility:hidden;pointer-events:none">
+        <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none !important;visibility:hidden;pointer-events:none">
           <div style="font-size:0.9rem;color:#666;margin-bottom:8px;font-weight:500">
             <span id="global-hashtag-content-title"></span>
             <button id="global-hashtag-content-edit" style="background:none;border:none;font-size:0.8rem;color:#2196f3;text-decoration:underline;padding:0;margin-left:8px">編集</button>
@@ -337,12 +337,13 @@
   </div>
 
   <!-- タグ管理 -->
-  <div class="page" id="page-tags" style="padding:20px">
+  <div class="page" id="page-tags" style="padding:20px;padding-bottom:100px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
       <button id="back-btn-tags" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
-      <h2 style="margin:0;font-size:1.2rem">🏷️ タグ管理</h2>
+      <h2 style="margin:0;font-size:1.2rem">🏷️ タグ</h2>
+      <button id="tags-page-memo-btn" style="background:none;border:none;font-size:1.2rem;cursor:pointer;margin-left:auto" title="ノートを開く">📒</button>
     </div>
-    <div id="tags-list" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div id="tags-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
   </div>
 
   <!-- タグプレビューモーダル -->
@@ -449,6 +450,10 @@
       <div class="modal-row"><span>問題の表示時間（秒）</span><input type="number" id="cfg-q-delay" value="3" min="1" max="30"></div>
       <div class="modal-row"><span>答えの表示時間（秒）</span><input type="number" id="cfg-a-delay" value="3" min="1" max="30"></div>
       <div class="modal-row"><span>解説をデフォルトで開く</span><input type="checkbox" id="cfg-auto-detail" style="width:20px;height:20px;cursor:pointer"></div>
+    </div>
+    <div class="modal-row" id="tags-settings-row">🏷️ タグ管理</div>
+    <div id="tags-settings-section" style="display:none;padding:8px 0">
+      <div id="tags-settings-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
     </div>
     <div class="modal-row" id="howto-row">&#x1f4d6; 使い方</div>
     <div id="howto-section" style="display:none;padding:12px 0;font-size:.82rem;color:#555;line-height:1.9">
@@ -1072,6 +1077,7 @@ async function navigateTo(page,data){
 }
 document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
 document.getElementById('back-btn-tags').addEventListener('click',()=>navigateTo('home'));
+document.getElementById('tags-page-memo-btn').addEventListener('click',()=>navigateTo('memo'));
 document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')returnFromOverlay();else navigateTo('stats')});
 document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')returnFromOverlay();else navigateTo('affiliate')});
 
@@ -1285,30 +1291,17 @@ document.getElementById('global-memo').addEventListener('input',()=>{
   globalMemoTimer=setTimeout(saveGlobalMemo,2000);
 });
 
-/* タグ管理ページ */
-let selectedTagForPreview=null;
-function renderTagsPage(){
-  const list=document.getElementById('tags-list');
+/* タグ管理（設定モーダル） */
+function renderTagsSettingsList(){
+  const list=document.getElementById('tags-settings-list');
   const tags=Object.keys(globalMemoHashtags).sort();
   if(tags.length===0){
-    list.innerHTML='<p style="color:#999;text-align:center">タグがまだありません</p>';
+    list.innerHTML='<p style="color:#999;font-size:0.9rem">タグはまだありません</p>';
     return;
   }
-  list.innerHTML=tags.map(tag=>`<div style="padding:12px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center"><button class="tag-btn" data-tag="${esc(tag)}" style="background:none;border:none;color:#0066cc;cursor:pointer;font-size:1rem;text-align:left;padding:0;flex:1">#${esc(tag)}</button><button class="tag-edit-btn" data-tag="${esc(tag)}" style="background:#2196f3;color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:.85rem;margin-left:8px">編集</button></div>`).join('');
-  document.querySelectorAll('.tag-btn').forEach(b=>{
-    b.addEventListener('click',e=>{
-      const tag=b.dataset.tag;
-      selectedTagForPreview=tag;
-      const content=globalMemoHashtags[tag]||'';
-      const modal=document.getElementById('tag-preview-modal');
-      document.getElementById('tag-preview-title').textContent=`#${esc(tag)}`;
-      document.getElementById('tag-preview-content').textContent=content;
-      modal.style.display='block';
-    });
-  });
-  document.querySelectorAll('.tag-edit-btn').forEach(b=>{
+  list.innerHTML=tags.map(tag=>`<button class="tag-settings-chip" data-tag="${esc(tag)}" style="background:#f0f0f0;border:1px solid #ddd;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.9rem;color:#333;white-space:nowrap">#${esc(tag)}</button>`).join('');
+  document.querySelectorAll('.tag-settings-chip').forEach(b=>{
     b.addEventListener('click',async e=>{
-      e.stopPropagation();
       const tag=b.dataset.tag;
       const oldContent=globalMemoHashtags[tag]||'';
       const editorModal=document.getElementById('tag-editor-modal');
@@ -1329,7 +1322,7 @@ function renderTagsPage(){
         const dk=getDeck(currentDeck);
         if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
         editorModal.style.display='none';
-        renderTagsPage();
+        renderTagsSettingsList();
         showToast(`タグを更新: #${tag} → #${newName}`);
       };
       delBtn.onclick=async()=>{
@@ -1338,10 +1331,33 @@ function renderTagsPage(){
           const dk=getDeck(currentDeck);
           if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
           editorModal.style.display='none';
-          renderTagsPage();
+          renderTagsSettingsList();
           showToast(`削除しました: #${tag}`);
         }
       };
+    });
+  });
+}
+
+/* タグ管理ページ */
+let selectedTagForPreview=null;
+function renderTagsPage(){
+  const list=document.getElementById('tags-list');
+  const tags=Object.keys(globalMemoHashtags).sort();
+  if(tags.length===0){
+    list.innerHTML='<p style="color:#999;text-align:center;width:100%;padding:20px">タグがまだありません</p>';
+    return;
+  }
+  list.innerHTML=tags.map(tag=>`<button class="tag-chip-btn" data-tag="${esc(tag)}" style="background:#f0f0f0;border:1px solid #ddd;padding:6px 12px;border-radius:20px;cursor:pointer;font-size:0.9rem;color:#333;white-space:nowrap">#${esc(tag)}</button>`).join('');
+  document.querySelectorAll('.tag-chip-btn').forEach(b=>{
+    b.addEventListener('click',e=>{
+      const tag=b.dataset.tag;
+      selectedTagForPreview=tag;
+      const content=globalMemoHashtags[tag]||'';
+      const modal=document.getElementById('tag-preview-modal');
+      document.getElementById('tag-preview-title').textContent=`#${esc(tag)}`;
+      document.getElementById('tag-preview-content').textContent=content;
+      modal.style.display='block';
     });
   });
 }
@@ -1697,6 +1713,7 @@ document.getElementById('deck-delete-btn').addEventListener('click',async()=>{co
 document.getElementById('autoplay-settings-row').addEventListener('click',()=>{const s=document.getElementById('autoplay-settings-section');const opening=s.style.display==='none';s.style.display=opening?'block':'none';if(opening){document.getElementById('cfg-auto-detail').checked=autoShowDetail}});
 document.getElementById('cfg-auto-detail').addEventListener('change',e=>{autoShowDetail=e.target.checked;LS.save('fc_auto_detail',autoShowDetail)});
 document.getElementById('reset-group-row').addEventListener('click',()=>{const s=document.getElementById('reset-group-section');s.style.display=s.style.display==='none'?'block':'none'});
+document.getElementById('tags-settings-row').addEventListener('click',function(){const s=document.getElementById('tags-settings-section');const opening=s.style.display==='none';s.style.display=opening?'block':'none';if(opening){renderTagsSettingsList()}});
 document.getElementById('howto-row').addEventListener('click',()=>{const s=document.getElementById('howto-section');s.style.display=s.style.display==='none'?'block':'none'});
 function updateCsvSubdecks(){const dk=getDeck(document.getElementById('csv-import-deck').value);const sds=dk?.subdecks||[];document.getElementById('csv-import-subdeck').innerHTML='<option value="">なし（直下）</option>'+sds.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('')}
 document.getElementById('csv-import-row').addEventListener('click',()=>{const s=document.getElementById('csv-import-section');if(s.style.display==='none'){s.style.display='block';document.getElementById('csv-import-deck').innerHTML=decks.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');updateCsvSubdecks()}else{s.style.display='none'}});
@@ -1790,15 +1807,13 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
 <footer style="position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:space-around;background:#fff;border-top:1px solid #ddd;padding:8px 0;z-index:50">
   <button id="footer-home" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="ホーム">🏠</button>
   <button id="footer-memo" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="ノート">📒</button>
-  <button id="footer-tags" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7;border-right:1px solid #eee" title="タグ">🏷️</button>
-  <button id="footer-settings" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="設定">⚙️</button>
+  <button id="footer-tags" style="flex:1;background:none;border:none;padding:12px;cursor:pointer;font-size:1.4rem;opacity:0.7" title="タグ">🏷️</button>
 </footer>
 
 <script>
 document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
 document.getElementById('footer-memo').addEventListener('click',()=>navigateTo('memo'));
 document.getElementById('footer-tags').addEventListener('click',()=>navigateTo('tags'));
-document.getElementById('footer-settings').addEventListener('click',()=>document.getElementById('settings-modal').classList.add('active'));
 </script>
 </body>
 </html>
