@@ -1786,7 +1786,11 @@ if('serviceWorker'in navigator){navigator.serviceWorker.register('/sw.js')}
 </footer>
 
 <script>
-document.getElementById('footer-home').addEventListener('click',()=>navigateTo('home'));
+document.getElementById('footer-home').addEventListener('click',()=>{
+  console.log('Footer home clicked');
+  document.getElementById('memo-modal').style.display='none';
+  navigateTo('home');
+});
 document.getElementById('footer-memo').addEventListener('click',async()=>{
   console.log('Footer memo clicked. decks.length=', decks.length, 'currentDeck=', currentDeck);
   if(decks.length===0){
@@ -1803,6 +1807,8 @@ document.getElementById('footer-memo').addEventListener('click',async()=>{
   console.log('loadGlobalMemo completed');
 });
 document.getElementById('footer-tags').addEventListener('click',async()=>{
+  console.log('Footer tags clicked');
+  document.getElementById('memo-modal').style.display='none';
   if(decks.length===0){showToast('デッキがありません');return}
   if(!currentDeck)currentDeck=decks[0].name;
   navigateTo('tags');
