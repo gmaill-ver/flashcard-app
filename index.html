@@ -1289,6 +1289,25 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
   const btn=e.target.closest('.global-hashtag-btn');
   if(btn){
     const tag=btn.dataset.tag;
+    if(hashtagManageMode){
+      const newName=prompt(`タグ名を変更:\n現在: #${tag}`, tag);
+      if(newName&&newName!==tag){
+        const newTag=newName.trim().toLowerCase();
+        if(!newTag){showToast('タグ名を入力してください');return}
+        if(globalMemoHashtags[newTag]!=null){showToast('既に存在するタグです');return}
+        globalMemoHashtags[newTag]=globalMemoHashtags[tag];
+        delete globalMemoHashtags[tag];
+        const dk=getDeck(currentDeck);
+        if(dk){
+          dk.memoHashtags={...globalMemoHashtags};
+          await saveDecks();
+        }
+        selectedGlobalHashtag=newTag;
+        renderGlobalMemoHashtags();
+        showToast(`タグ名を変更: #${tag} → #${newTag}`);
+      }
+      return;
+    }
     selectedGlobalHashtag=tag;
     const wrap=document.getElementById('global-hashtag-content-wrap');
     const title=document.getElementById('global-hashtag-content-title');
