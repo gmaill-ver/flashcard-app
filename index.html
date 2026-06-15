@@ -1223,12 +1223,15 @@ document.getElementById('anki-memo-toggle').addEventListener('click',()=>{
   const htEdit=document.getElementById('anki-hashtag-edit');
   const btn=document.getElementById('anki-memo-toggle');
   const card=studyCards[studyIndex];
+  console.log('[memo-toggle] clicked, view.display=', view.style.display, 'htWrap=', htWrap);
   if(view.style.display==='block'){
+    console.log('[memo-toggle] showing edit mode');
     view.style.display='none';edit.style.display='block';save.style.display='block';htWrap.style.display='block';
     edit.focus();
     if(card&&card.hashtags){htEdit.value=card.hashtags.join(' ')}
     btn.textContent='キャンセル';
   }else{
+    console.log('[memo-toggle] hiding edit mode');
     view.style.display='block';edit.style.display='none';save.style.display='none';htWrap.style.display='none';
     btn.textContent='編集';
   }
@@ -1243,12 +1246,15 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
   /* ハッシュタグをパース */
   const hashtags=htInput?htInput.split(/[\s\n]+/).filter(t=>t.startsWith('#')).map(t=>t.slice(1).toLowerCase()):[];
 
+  console.log('[memo-save] memo=', memo, 'htInput=', htInput, 'parsed hashtags=', hashtags);
+
   card.memo=memo||undefined;
   card.hashtags=hashtags.length>0?hashtags:undefined;
 
   const upd={memo:memo||null};
   if(hashtags.length>0)upd.hashtags=hashtags;else upd.hashtags=null;
 
+  console.log('[memo-save] saving to Firestore:', upd);
   await updateCard(card.id,upd);
   await updateDeckHashtags(currentDeck);
 
