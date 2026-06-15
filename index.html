@@ -310,6 +310,16 @@
         </div>
       </div>
     </div>
+
+    <!-- 常時メモ帳 -->
+    <div style="margin-top:16px;padding:12px;background:#fffbf0;border:1px solid #ffe0b2;border-radius:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:.9rem;color:#e65100;font-weight:600">💡 疑問メモ</span>
+        <span style="font-size:.75rem;color:#999">(学習中の気づきを記録)</span>
+      </div>
+      <textarea id="global-memo" placeholder="疑問に思ったこと、気づいたことを箇条書きで記録&#10;例）&#10;- ここの解釈がよくわからない&#10;- 関連する条文を調べる" style="width:100%;min-height:100px;padding:8px;border:1px solid #ffe0b2;border-radius:6px;font-family:inherit;font-size:.9rem;resize:vertical"></textarea>
+      <button id="global-memo-save" style="background:#ff9800;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;font-size:.9rem">保存</button>
+    </div>
   </div>
 
   <!-- カード管理 -->
@@ -1129,7 +1139,7 @@ function getStudyPool(){
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
-function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()}
+function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
@@ -1207,6 +1217,30 @@ document.getElementById('anki-memo-save').addEventListener('click',async()=>{
 
   showToast('メモを保存しました');
 });
+
+/* グローバルメモ機能 */
+async function loadGlobalMemo(){
+  const dk=getDeck(currentDeck);
+  if(!dk||isGuest)return;
+  try{
+    const doc=await userDoc().get();
+    const deckMemos=doc.data()?.deckMemos||{};
+    document.getElementById('global-memo').value=deckMemos[currentDeck]||'';
+  }catch(e){console.error(e)}
+}
+
+async function saveGlobalMemo(){
+  if(isGuest){return}
+  const memo=document.getElementById('global-memo').value;
+  try{
+    const deckMemos=document.getElementById('global-memo').dataset.deckMemos||{};
+    deckMemos[currentDeck]=memo;
+    await userDoc().update({deckMemos});
+    showToast('疑問メモを保存しました');
+  }catch(e){console.error(e);showToast('保存失敗')}
+}
+
+document.getElementById('global-memo-save').addEventListener('click',saveGlobalMemo);
 
 document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('click',async()=>{
   const r=b.dataset.rating;
