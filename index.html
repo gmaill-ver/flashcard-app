@@ -1036,7 +1036,7 @@ async function initApp(){showLoading();await loadData();await loadGlobalMemo();a
 /* ========== Nav ========== */
 let studyPageState=null;function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
 async function backToStudy(){if(!studyPageState){await navigateTo('home');return}document.getElementById('memo-modal').style.display='none';await navigateTo('study',studyPageState)}
-async function goBack(){if(studyPageState){await backToStudy()}else{await navigateTo('home')}}
+async function goBack(){document.getElementById('memo-modal').style.display='none';if(studyPageState){await backToStudy()}else{await navigateTo('home')}}
 function returnFromOverlay(){
   document.getElementById('memo-modal').style.display='none';
   currentPage=previousPage;
