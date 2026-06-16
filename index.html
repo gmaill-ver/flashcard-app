@@ -1072,7 +1072,7 @@ async function navigateTo(page,data){
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.style.display='';title.textContent='参考書・問題集';break;
   }
 }
-document.getElementById('back-btn').addEventListener('click',()=>navigateTo('home'));
+document.getElementById('back-btn').addEventListener('click',()=>returnFromOverlay());
 document.getElementById('back-btn-tags').addEventListener('click',()=>navigateTo('home'));
 document.getElementById('stats-btn').addEventListener('click',()=>{if(currentPage==='stats')returnFromOverlay();else navigateTo('stats')});
 document.getElementById('affiliate-btn').addEventListener('click',()=>{if(currentPage==='affiliate')returnFromOverlay();else navigateTo('affiliate')});
