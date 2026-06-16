@@ -310,7 +310,7 @@
         <button id="back-btn-tags" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
         <h2 style="margin:0;font-size:1.2rem">🏷️ タグ</h2>
       </div>
-      <button id="tags-back-to-study" style="display:none;background:#2196f3;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:0.85rem;cursor:pointer;white-space:nowrap;font-weight:500">問題に戻る</button>
+      <button id="tags-back-to-study" style="display:none;background:#c0c0c0;color:#333;border:none;border-radius:6px;padding:8px 16px;font-size:0.85rem;cursor:pointer;white-space:nowrap;font-weight:500">問題に戻る</button>
     </div>
     <div id="tags-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
   </div>
@@ -319,7 +319,7 @@
   <div id="memo-modal" style="display:none;position:fixed;top:56px;left:0;right:0;bottom:70px;background:#fff;z-index:100;overflow-y:auto;padding:20px;padding-bottom:20px">
     <div style="width:100%;height:100%">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;justify-content:flex-end">
-        <button id="memo-back-to-study" style="display:none;background:#2196f3;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:0.85rem;cursor:pointer;white-space:nowrap;font-weight:500">問題に戻る</button>
+        <button id="memo-back-to-study" style="display:none;background:#c0c0c0;color:#333;border:none;border-radius:6px;padding:8px 16px;font-size:0.85rem;cursor:pointer;white-space:nowrap;font-weight:500">問題に戻る</button>
       </div>
       <textarea id="global-memo" style="width:100%;min-height:300px;padding:12px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:1rem;resize:vertical;word-break:break-word"></textarea>
 
@@ -1044,8 +1044,9 @@ auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;aw
 async function initApp(){showLoading();await loadData();await loadGlobalMemo();await seedKenpo();await seedKenpoV2();await seedGyoseishoshi();await cleanupKenpoDuplicates();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home')}
 
 /* ========== Nav ========== */
-const navStack=[];function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
-function goBack(){if(navStack.length===0){navigateTo('home');return}const prev=navStack.pop();document.getElementById('memo-modal').style.display='none';currentPage=prev.page;showPage(prev.page);const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');if(prev.page==='study'){back.classList.add('visible');title.style.display='none';bc.textContent=prev.data.category?`${prev.data.deck} > ${prev.data.subdeck} > ${prev.data.category}`:prev.data.subdeck?`${prev.data.deck} > ${prev.data.subdeck}`:prev.data.deck;bc.classList.add('visible');currentDeck=prev.data.deck;currentSubdeck=prev.data.subdeck;currentCategory=prev.data.category}else if(prev.page==='manage'){back.classList.add('visible');title.style.display='';title.textContent=prev.data+' - 管理';bc.classList.remove('visible');currentDeck=prev.data}else if(prev.page==='tags'){back.classList.add('visible');title.style.display='';title.textContent='タグ';bc.classList.remove('visible')}else if(prev.page==='memo'){back.classList.add('visible');title.style.display='';title.textContent='ノート';bc.classList.remove('visible')}else{back.classList.remove('visible');title.style.display='';title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab)}}
+let studyPageState=null;function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
+function backToStudy(){if(!studyPageState){navigateTo('home');return}document.getElementById('memo-modal').style.display='none';navigateTo('study',studyPageState)}
+function goBack(){navigateTo('home')}
 function returnFromOverlay(){
   document.getElementById('memo-modal').style.display='none';
   currentPage=previousPage;
@@ -1056,7 +1057,7 @@ function returnFromOverlay(){
   else{back.classList.remove('visible');title.style.display='';title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);}
 }
 async function navigateTo(page,data){
-  if(currentPage!=='login')navStack.push({page:currentPage,data:{deck:currentDeck,subdeck:currentSubdeck,category:currentCategory}});
+  if(page==='study')studyPageState=null;
   stopAutoPlay();isPublicStudy=false;
   currentPage=page;
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
@@ -1066,12 +1067,10 @@ async function navigateTo(page,data){
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'memo':showPage('memo-modal');back.classList.add('visible');title.style.display='';title.textContent='ノート';bc.classList.remove('visible');loadGlobalMemo();break;
-    case'tags':showPage('tags');back.classList.add('visible');title.style.display='';title.textContent='タグ';bc.classList.remove('visible');const hasStudyForTags=navStack.some(item=>item.page==='study');document.getElementById('tags-back-to-study').style.display=hasStudyForTags?'block':'none';await loadGlobalMemo();renderTagsPage();break;
     case'stats':showPage('stats');back.classList.add('visible');title.style.display='';title.textContent='統計';renderStats();loadStudyMemo();break;
     case'affiliate':showPage('affiliate');back.classList.add('visible');title.style.display='';title.textContent='参考書・問題集';break;
   }
 }
-function backToStudy(){while(navStack.length>0&&currentPage!=='study'){goBack()}}
 document.getElementById('back-btn').addEventListener('click',()=>goBack());
 document.getElementById('back-btn-tags').addEventListener('click',()=>goBack());
 document.getElementById('memo-back-to-study').addEventListener('click',()=>backToStudy());
@@ -1795,31 +1794,27 @@ document.getElementById('footer-home').addEventListener('click',()=>{
   navigateTo('home');
 });
 document.getElementById('footer-memo').addEventListener('click',async()=>{
-  console.log('Footer memo clicked. decks.length=', decks.length, 'currentDeck=', currentDeck);
-  if(decks.length===0){
-    alert('デッキがありません。設定からデッキを作成してください。');
-    return;
-  }
+  if(decks.length===0){alert('デッキがありません。設定からデッキを作成してください。');return}
   if(!currentDeck)currentDeck=decks[0].name;
-  console.log('Opening memo-modal. currentDeck=', currentDeck);
-  navStack.push({page:currentPage,data:{deck:currentDeck,subdeck:currentSubdeck,category:currentCategory}});
+  if(currentPage==='study')studyPageState={deck:currentDeck,subdeck:currentSubdeck,category:currentCategory};
   currentPage='memo';
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
   back.classList.add('visible');title.style.display='';title.textContent='ノート';bc.classList.remove('visible');
-  const modal = document.getElementById('memo-modal');
-  modal.style.cssText = 'display: block !important; position: fixed !important; top: 56px !important; left: 0 !important; right: 0 !important; bottom: 70px !important; background: white !important; z-index: 100 !important; overflow-y: auto !important; padding: 20px !important; pointer-events: auto !important;';
-  const hasStudy = navStack.some(item => item.page === 'study');
-  document.getElementById('memo-back-to-study').style.display = hasStudy ? 'block' : 'none';
-  console.log('memo-modal display set to block. modal element:', modal);
+  const modal=document.getElementById('memo-modal');
+  modal.style.cssText='display:block!important;position:fixed!important;top:56px!important;left:0!important;right:0!important;bottom:70px!important;background:#fff!important;z-index:100!important;overflow-y:auto!important;padding:20px!important;pointer-events:auto!important;';
+  document.getElementById('memo-back-to-study').style.display=studyPageState?'block':'none';
   await loadGlobalMemo();
-  console.log('loadGlobalMemo completed');
 });
 document.getElementById('footer-tags').addEventListener('click',async()=>{
-  console.log('Footer tags clicked');
   document.getElementById('memo-modal').style.display='none';
   if(decks.length===0){showToast('デッキがありません');return}
   if(!currentDeck)currentDeck=decks[0].name;
-  navigateTo('tags');
+  if(currentPage==='study')studyPageState={deck:currentDeck,subdeck:currentSubdeck,category:currentCategory};
+  currentPage='tags';
+  const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
+  back.classList.add('visible');title.style.display='';title.textContent='タグ';bc.classList.remove('visible');
+  document.getElementById('tags-back-to-study').style.display=studyPageState?'block':'none';
+  showPage('tags');await loadGlobalMemo();renderTagsPage();
 });
 </script>
 </body>
