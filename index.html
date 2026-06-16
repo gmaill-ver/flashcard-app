@@ -1384,9 +1384,19 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
         dk.memoHashtags={...globalMemoHashtags};
         await saveDecks();
       }
-      if(!isGuest){try{await userDoc().update({globalMemoHashtags});}catch(e){console.error(e)}}
+      if(!isGuest){
+        try{
+          await userDoc().update({globalMemoHashtags});
+          console.log('Firestore updated successfully');
+        }catch(e){
+          console.error('Failed to update Firestore:', e);
+          showToast('エラー: 削除に失敗しました');
+          return;
+        }
+      }
       if(selectedGlobalHashtag===tag){selectedGlobalHashtag=null;document.getElementById('global-hashtag-content-wrap').style.display='none'}
       renderGlobalMemoHashtags();
+      renderTagsPage();
       showToast(`削除しました: #${tag}`);
     }
     return;
