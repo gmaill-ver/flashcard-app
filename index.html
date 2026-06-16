@@ -1049,6 +1049,7 @@ function showPage(id){
   document.getElementById('page-'+id).classList.add('active');
 }
 function returnFromOverlay(){
+  document.getElementById('memo-modal').style.display='none';
   currentPage=previousPage;
   showPage(previousPage);
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
