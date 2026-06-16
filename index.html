@@ -1378,10 +1378,10 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
   if(delBtn){
     const tag=delBtn.dataset.deleteTag;
     if(confirm(`#${tag} を削除しますか？`)){
-      console.log('Deleting tag:', tag);
-      console.log('Before delete:', globalMemoHashtags);
+      console.log('=== Deleting tag:', tag, '===');
+      console.log('Before delete:', JSON.stringify(globalMemoHashtags));
       delete globalMemoHashtags[tag];
-      console.log('After delete:', globalMemoHashtags);
+      console.log('After delete:', JSON.stringify(globalMemoHashtags));
       const dk=getDeck(currentDeck);
       if(dk){
         dk.memoHashtags={...globalMemoHashtags};
@@ -1389,8 +1389,12 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
       }
       if(!isGuest){
         try{
-          await userDoc().update({globalMemoHashtags});
+          const newHashtags={...globalMemoHashtags};
+          console.log('Sending to Firestore:', JSON.stringify(newHashtags));
+          await userDoc().update({globalMemoHashtags:newHashtags});
           console.log('Firestore updated successfully');
+          const verifyDoc=await userDoc().get();
+          console.log('Verification - Firestore data:', JSON.stringify(verifyDoc.data().globalMemoHashtags));
         }catch(e){
           console.error('Failed to update Firestore:', e);
           showToast('エラー: 削除に失敗しました');
