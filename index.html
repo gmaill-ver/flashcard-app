@@ -1227,11 +1227,7 @@ let globalMemoTimer=null;
 function renderGlobalMemoHashtags(){
   const list=document.getElementById('global-memo-hashtag-list');
   const tags=Object.keys(globalMemoHashtags).sort();
-  if(hashtagManageMode){
-    list.innerHTML=tags.map(tag=>`<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #b3d9ff;padding:6px 10px;border-radius:14px;font-size:.8rem"><span class="global-hashtag-name" data-tag="${esc(tag)}" style="color:#0066cc;cursor:pointer;flex:1">#${esc(tag)}</span><button class="global-hashtag-del" data-delete-tag="${esc(tag)}" style="background:none;border:none;font-size:.9rem;cursor:pointer;padding:0;color:#f44336">✕</button></div>`).join('')
-  }else{
-    list.innerHTML=tags.map(tag=>`<button class="global-hashtag-btn" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff">#${esc(tag)}</button>`).join('')
-  }
+  list.innerHTML=tags.map(tag=>`<div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #b3d9ff;padding:6px 10px;border-radius:14px;font-size:.8rem"><span class="global-hashtag-btn" data-tag="${esc(tag)}" style="color:#0066cc;cursor:pointer;flex:1">#${esc(tag)}</span><button class="global-hashtag-del" data-delete-tag="${esc(tag)}" style="background:none;border:none;font-size:.9rem;cursor:pointer;padding:0;color:#f44336">✕</button></div>`).join('')
 }
 
 async function loadGlobalMemo(){
