@@ -1378,7 +1378,10 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
   if(delBtn){
     const tag=delBtn.dataset.deleteTag;
     if(confirm(`#${tag} を削除しますか？`)){
+      console.log('Deleting tag:', tag);
+      console.log('Before delete:', globalMemoHashtags);
       delete globalMemoHashtags[tag];
+      console.log('After delete:', globalMemoHashtags);
       const dk=getDeck(currentDeck);
       if(dk){
         dk.memoHashtags={...globalMemoHashtags};
@@ -1416,8 +1419,19 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
         dk.memoHashtags={...globalMemoHashtags};
         await saveDecks();
       }
+      if(!isGuest){
+        try{
+          await userDoc().update({globalMemoHashtags});
+          console.log('Firestore updated successfully for tag rename');
+        }catch(e){
+          console.error('Failed to update Firestore:', e);
+          showToast('エラー: タグ名変更に失敗しました');
+          return;
+        }
+      }
       selectedGlobalHashtag=newTag;
       renderGlobalMemoHashtags();
+      renderTagsPage();
       showToast(`タグ名を変更: #${tag} → #${newTag}`);
     }
     return;
