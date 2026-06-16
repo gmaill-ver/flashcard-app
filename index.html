@@ -1487,6 +1487,7 @@ document.addEventListener('click',e=>{
     if(globalMemoTimer)clearTimeout(globalMemoTimer);
     saveGlobalMemo();
     modal.style.display='none';
+    returnFromOverlay();
   }
 });
 
