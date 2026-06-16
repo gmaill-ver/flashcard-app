@@ -304,7 +304,7 @@
   </div>
 
   <!-- タグ管理 -->
-  <div class="page" id="page-tags" style="padding:20px;padding-bottom:100px">
+  <div class="page" id="page-tags" style="padding:20px;padding-top:56px;padding-bottom:100px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:8px">
         <button id="back-btn-tags" style="background:none;border:none;font-size:1.4rem;cursor:pointer">←</button>
@@ -1045,8 +1045,8 @@ async function initApp(){showLoading();await loadData();await loadGlobalMemo();a
 
 /* ========== Nav ========== */
 let studyPageState=null;function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
-function backToStudy(){if(!studyPageState){navigateTo('home');return}document.getElementById('memo-modal').style.display='none';navigateTo('study',studyPageState)}
-function goBack(){navigateTo('home')}
+async function backToStudy(){if(!studyPageState){await navigateTo('home');return}document.getElementById('memo-modal').style.display='none';await navigateTo('study',studyPageState)}
+async function goBack(){if(currentPage==='tags'||currentPage==='memo'){if(studyPageState){await backToStudy()}else{await navigateTo('home')}}else{await navigateTo('home')}}
 function returnFromOverlay(){
   document.getElementById('memo-modal').style.display='none';
   currentPage=previousPage;
