@@ -112,6 +112,12 @@ async function loadData() {
       }
     }
 
+    // 不要な重複データ（旧バグで各デッキに複製されたタグ全内容）を除去
+    if (decks.some(dk => dk.memoHashtags)) {
+      decks.forEach(dk => delete dk.memoHashtags);
+      await saveDecks();
+    }
+
     // サブデッキメタデータの確認
     const needsSD = decks.some(dk => dk.subdecks && dk.subdecks.length > 0 && !dk.subdeckCounts);
 

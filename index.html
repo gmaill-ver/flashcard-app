@@ -322,7 +322,7 @@
         <div id="global-memo-hashtag-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:32px"></div>
       </div>
 
-      <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none !important;visibility:hidden;pointer-events:none">
+      <div id="global-hashtag-content-wrap" style="margin-top:20px;padding-top:20px;border-top:1px solid #eee;display:none">
         <div style="font-size:0.9rem;color:#666;margin-bottom:8px;font-weight:500">
           <span id="global-hashtag-content-title"></span>
           <button id="global-hashtag-content-edit" style="background:none;border:none;font-size:0.8rem;color:#2196f3;text-decoration:underline;padding:0;margin-left:8px">編集</button>
@@ -596,9 +596,9 @@ console.log('憲法条文デッキ追加: '+extra.length+'枚');
 async function seedGyoseishoshi(){
 if(isGuest||!currentUser)return;
 const DECK='行政書士';
-try{const chk=await cardsCol().where('deck','==',DECK).limit(1).get();if(!chk.empty)return;}catch(e){console.error('seedGyoseishoshi check failed',e);return;}
-const SUBDECKS=['行政手続法','行政不服審査法','行政事件訴訟法'];
 const existGyo=decks.find(d=>d.name===DECK);
+if(existGyo&&(existGyo.cardCount||0)>0)return;
+const SUBDECKS=['行政手続法','行政不服審査法','行政事件訴訟法'];
 if(!existGyo)decks.push({name:DECK,subdecks:SUBDECKS,publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
 else{existGyo.subdecks=SUBDECKS;existGyo.cardCount=0;}
 const gc=[
@@ -1277,6 +1277,18 @@ document.getElementById('global-memo').addEventListener('input',()=>{
 });
 
 /* タグ管理（設定モーダル） */
+async function persistGlobalHashtags(){
+  if(isGuest)return true;
+  try{
+    await userDoc().update({globalMemoHashtags});
+    return true;
+  }catch(e){
+    console.error('Failed to update Firestore:',e);
+    showToast('エラー: 保存に失敗しました');
+    return false;
+  }
+}
+
 function renderTagsSettingsList(){
   const list=document.getElementById('tags-settings-list');
   const tags=Object.keys(globalMemoHashtags).sort();
@@ -1304,30 +1316,15 @@ function renderTagsSettingsList(){
         if(newName!==tag&&globalMemoHashtags[newName]!=null){showToast('既に存在するタグです');return}
         delete globalMemoHashtags[tag];
         globalMemoHashtags[newName]=newContent;
-        const dk=getDeck(currentDeck);
-        if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
+        if(!await persistGlobalHashtags())return;
         editorModal.style.display='none';
         renderTagsSettingsList();
         showToast(`タグを更新: #${tag} → #${newName}`);
       };
       delBtn.onclick=async()=>{
         if(confirm(`#${tag} を削除しますか？`)){
-          console.log('=== Deleting tag from editor:', tag, '===');
           delete globalMemoHashtags[tag];
-          const dk=getDeck(currentDeck);
-          if(dk){dk.memoHashtags={...globalMemoHashtags};await saveDecks()}
-          if(!isGuest){
-            try{
-              const newHashtags={...globalMemoHashtags};
-              console.log('Sending to Firestore:', JSON.stringify(newHashtags));
-              await userDoc().update({globalMemoHashtags:newHashtags});
-              console.log('Firestore updated successfully');
-            }catch(e){
-              console.error('Failed to update Firestore:', e);
-              showToast('エラー: 削除に失敗しました');
-              return;
-            }
-          }
+          if(!await persistGlobalHashtags())return;
           editorModal.style.display='none';
           renderTagsSettingsList();
           renderGlobalMemoHashtags();
@@ -1375,9 +1372,10 @@ document.getElementById('global-memo-hashtag-add').addEventListener('click',asyn
   const memoText=memo.value.trim();
   if(!memoText){showToast('ノートにテキストを入力してください');return;}
   globalMemoHashtags[tag]=memoText;
-  await saveGlobalMemo();
+  if(globalMemoTimer)clearTimeout(globalMemoTimer);
   input.value='';
   memo.value='';
+  await saveGlobalMemo();
   selectedGlobalHashtag=null;
   document.getElementById('global-hashtag-content-wrap').style.display='none';
   renderGlobalMemoHashtags();
@@ -1389,29 +1387,8 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
   if(delBtn){
     const tag=delBtn.dataset.deleteTag;
     if(confirm(`#${tag} を削除しますか？`)){
-      console.log('=== Deleting tag:', tag, '===');
-      console.log('Before delete:', JSON.stringify(globalMemoHashtags));
       delete globalMemoHashtags[tag];
-      console.log('After delete:', JSON.stringify(globalMemoHashtags));
-      const dk=getDeck(currentDeck);
-      if(dk){
-        dk.memoHashtags={...globalMemoHashtags};
-        await saveDecks();
-      }
-      if(!isGuest){
-        try{
-          const newHashtags={...globalMemoHashtags};
-          console.log('Sending to Firestore:', JSON.stringify(newHashtags));
-          await userDoc().update({globalMemoHashtags:newHashtags});
-          console.log('Firestore updated successfully');
-          const verifyDoc=await userDoc().get();
-          console.log('Verification - Firestore data:', JSON.stringify(verifyDoc.data().globalMemoHashtags));
-        }catch(e){
-          console.error('Failed to update Firestore:', e);
-          showToast('エラー: 削除に失敗しました');
-          return;
-        }
-      }
+      if(!await persistGlobalHashtags())return;
       if(selectedGlobalHashtag===tag){selectedGlobalHashtag=null;document.getElementById('global-hashtag-content-wrap').style.display='none'}
       renderGlobalMemoHashtags();
       renderTagsPage();
@@ -1429,21 +1406,7 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
       if(globalMemoHashtags[newTag]!=null){showToast('既に存在するタグです');return}
       globalMemoHashtags[newTag]=globalMemoHashtags[tag];
       delete globalMemoHashtags[tag];
-      const dk=getDeck(currentDeck);
-      if(dk){
-        dk.memoHashtags={...globalMemoHashtags};
-        await saveDecks();
-      }
-      if(!isGuest){
-        try{
-          await userDoc().update({globalMemoHashtags});
-          console.log('Firestore updated successfully for tag rename');
-        }catch(e){
-          console.error('Failed to update Firestore:', e);
-          showToast('エラー: タグ名変更に失敗しました');
-          return;
-        }
-      }
+      if(!await persistGlobalHashtags())return;
       selectedGlobalHashtag=newTag;
       renderGlobalMemoHashtags();
       renderTagsPage();
@@ -1489,11 +1452,7 @@ document.getElementById('global-hashtag-content-save').addEventListener('click',
   const area=document.getElementById('global-hashtag-content-edit-area');
   const content=area.value.trim();
   globalMemoHashtags[tag]=content||'';
-  const dk=getDeck(currentDeck);
-  if(dk){
-    dk.memoHashtags={...globalMemoHashtags};
-    await saveDecks();
-  }
+  if(!await persistGlobalHashtags())return;
 
   /* UI更新 */
   const view=document.getElementById('global-hashtag-content-view');
