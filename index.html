@@ -1670,7 +1670,7 @@ function renderStatsChart(){
 }
 document.querySelectorAll('.stats-range-btn').forEach(b=>{b.addEventListener('click',()=>{statsRange=b.dataset.range;document.querySelectorAll('.stats-range-btn').forEach(x=>x.classList.toggle('active',x===b));renderStatsChart()})});
 document.getElementById('stats-deck-filter').addEventListener('change',e=>{statsFilterDeck=e.target.value;renderStats()});
-document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};dailyStats={};await saveStats();showToast('リセットしました');document.getElementById('settings-modal').classList.remove('active')});
+document.getElementById('reset-stats-btn').addEventListener('click',async()=>{if(!confirm('統計をリセット？'))return;stats={reviews:0,incorrect:0,correct:0,understood:0};dailyStats={};await resetDailyStats();await saveStats();showToast('リセットしました');document.getElementById('settings-modal').classList.remove('active')});
 
 /* ========== Study Memo ========== */
 let memoSaveTimer=null;

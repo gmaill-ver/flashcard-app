@@ -81,7 +81,7 @@ async function loadData() {
       const raw = d.decks;
       decks = migrateDecks(raw);
       stats = migrateStats(d.stats);
-      dailyStats = d.dailyStats || {};
+      dailyStats = await loadDailyStatsRemote(d);
 
       // 古いデータ形式からの移行（cardCount がない）
       needsMeta = raw && raw.length > 0 && raw[0].cardCount == null;
@@ -169,6 +169,51 @@ async function saveDecks() {
   }
 }
 
+/* 日別統計は users/{uid}/dailyStats/{YYYY-MM-DD} に1日1文書で保存 */
+let dailyLegacy = false;
+const dirtyDays = new Set();
+
+function dailyCol() {
+  return userDoc().collection('dailyStats');
+}
+
+async function loadDailyStatsRemote(d) {
+  const old = d.dailyStats || {};
+  try {
+    if (d.dailyMigrated) {
+      const snap = await dailyCol().get();
+      const out = {};
+      snap.docs.forEach(x => { out[x.id] = x.data(); });
+      dailyLegacy = false;
+      return out;
+    }
+    const days = Object.keys(old);
+    for (let i = 0; i < days.length; i += 400) {
+      const b = db.batch();
+      days.slice(i, i + 400).forEach(k => b.set(dailyCol().doc(k), old[k]));
+      await b.commit();
+    }
+    await userDoc().update({ dailyMigrated: true });
+    dailyLegacy = false;
+    return old;
+  } catch (e) {
+    console.error('dailyStats: 新形式が使えないため従来方式で動作', e);
+    dailyLegacy = true;
+    return old;
+  }
+}
+
+async function resetDailyStats() {
+  if (isGuest || dailyLegacy) return;
+  const snap = await dailyCol().get();
+  for (let i = 0; i < snap.docs.length; i += 400) {
+    const b = db.batch();
+    snap.docs.slice(i, i + 400).forEach(x => b.delete(x.ref));
+    await b.commit();
+  }
+  dirtyDays.clear();
+}
+
 async function saveStats() {
   if (isGuest) {
     LS.save('fc_stats', stats);
@@ -176,7 +221,18 @@ async function saveStats() {
     return;
   }
   try {
-    await userDoc().update({ stats, dailyStats });
+    if (dailyLegacy) {
+      await userDoc().update({ stats, dailyStats });
+      return;
+    }
+    await userDoc().update({ stats });
+    const days = [...dirtyDays];
+    dirtyDays.clear();
+    if (days.length) {
+      const b = db.batch();
+      days.forEach(k => { if (dailyStats[k]) b.set(dailyCol().doc(k), dailyStats[k]); });
+      await b.commit();
+    }
   } catch (e) {
     console.error(e);
   }
@@ -260,6 +316,7 @@ function trackDaily(r, dk) {
     dailyStats[t] = { reviews: 0, incorrect: 0, correct: 0, understood: 0, decks: {} };
   }
 
+  dirtyDays.add(t);
   dailyStats[t].reviews++;
   dailyStats[t][r]++;
 
