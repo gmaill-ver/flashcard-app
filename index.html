@@ -425,6 +425,7 @@
     </div>
     <div class="modal-row" id="exam-settings-row" style="cursor:pointer">&#x1f4dd; 過去問チェック設定<span style="color:#aaa">&gt;</span></div>
     <div class="modal-row" id="recount-row">&#x1f522; カード件数を数え直す</div>
+    <div class="modal-row" id="export-row" style="cursor:pointer">&#x1f4be; データを書き出す（バックアップ）</div>
     <div class="modal-row" id="howto-row">&#x1f4d6; 使い方</div>
     <div id="howto-section" style="display:none;padding:12px 0;font-size:.82rem;color:#555;line-height:1.9">
       <b>1. デッキを作成</b><br>設定 → 「デッキを追加」から科目名を入力して追加します。<br><br>
@@ -1861,6 +1862,31 @@ function saveExamSettings(){
 document.getElementById('exam-settings-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');renderExamSettings();document.getElementById('exam-settings-modal').classList.add('active')});
 document.getElementById('exam-settings-close').addEventListener('click',()=>document.getElementById('exam-settings-modal').classList.remove('active'));
 document.getElementById('exam-settings-save').addEventListener('click',async()=>{await saveExamSettings();document.getElementById('exam-settings-modal').classList.remove('active');showToast('保存しました');renderExam()});
+
+/* ========== データ書き出し（バックアップ） ========== */
+async function exportAllData(){
+  showLoading();
+  try{
+    let data;
+    if(isGuest){
+      data={decks,cards,stats,dailyStats,globalMemo:LS.load('fc_memo',''),pastExam};
+    }else{
+      const [ud,cs,ds,ts]=await Promise.all([userDoc().get({source:'server'}),cardsCol().get({source:'server'}),dailyCol().get({source:'server'}),memoTagsCol().get({source:'server'})]);
+      const u=ud.exists?ud.data():{};
+      const dailyStatsOut={};ds.docs.forEach(d=>{dailyStatsOut[d.id]=d.data()});
+      const tags={};ts.docs.forEach(d=>{tags[d.data().name]=d.data().content||''});
+      data={decks:u.decks||[],cards:cs.docs.map(d=>({id:d.id,...d.data()})),stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:tags,studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
+    }
+    data.exportedAt=new Date().toISOString();data.version=1;
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const d=new Date();const ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`flashcard-backup-${ymd}.json`;
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+    showToast(`書き出しました（カード${data.cards.length}枚）`);
+  }catch(e){console.error(e);showToast('書き出しに失敗しました')}
+  document.getElementById('loading').classList.add('hidden');
+}
+document.getElementById('export-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');exportAllData()});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
