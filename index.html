@@ -590,10 +590,10 @@ console.log('憲法条文デッキ追加: '+extra.length+'枚');
 }
 
 async function seedGyoseishoshi(){
-if(isGuest||!currentUser)return;
+if(isGuest||!currentUser)return;if(localStorage.getItem('fc_gyosei_seeded_v1'))return;
 const DECK='行政書士';
 const existGyo=decks.find(d=>d.name===DECK);
-if(existGyo&&(existGyo.cardCount||0)>0)return;
+if(existGyo&&(existGyo.cardCount||0)>0){localStorage.setItem('fc_gyosei_seeded_v1','1');return}
 const SUBDECKS=['行政手続法','行政不服審査法','行政事件訴訟法'];
 if(!existGyo)decks.push({name:DECK,subdecks:SUBDECKS,publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
 else{existGyo.subdecks=SUBDECKS;existGyo.cardCount=0;}
@@ -1001,6 +1001,7 @@ const now=new Date().toISOString();
 for(let i=0;i<gc.length;i+=400){const batch=db.batch();gc.slice(i,i+400).forEach(c=>{const ref=cardsCol().doc();batch.set(ref,{question:c.q,answer:c.a,detail:c.d,deck:DECK,subdeck:c.s,lastRating:null,created:now})});await batch.commit()}
 const dk=getDeck(DECK);if(dk){dk.cardCount=gc.length;dk.ratings={incorrect:0,correct:0,understood:0};dk.subdecks=SUBDECKS;}
 await saveDecks();
+localStorage.setItem('fc_gyosei_seeded_v1','1');
 showToast('行政書士デッキを追加しました（'+gc.length+'問）');
 renderDeckList();
 }
@@ -1027,7 +1028,18 @@ document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 document.getElementById('header-user').addEventListener('click',async()=>{if(!confirm('ログアウトしますか？'))return;if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();await loadGlobalMemo();await seedKenpo();await seedKenpoV2();await seedGyoseishoshi();await cleanupKenpoDuplicates();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home')}
+async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home');backgroundTasks()}
+async function backgroundTasks(){
+  try{
+    if(!isGuest){
+      if(needsRecount){await recountAllMeta();await userDoc().update({countsV2:true});needsRecount=false}
+      const before=JSON.stringify(decks.map(d=>[d.name,d.cardCount]));
+      await seedKenpo();await seedKenpoV2();await seedGyoseishoshi();await cleanupKenpoDuplicates();
+      loadGlobalMemo();
+    }else{loadGlobalMemo()}
+    if(currentPage==='home')renderDeckList();
+  }catch(e){console.error('backgroundTasks',e)}
+}
 
 /* ========== Nav ========== */
 let studyPageState=null;function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-'+id).classList.add('active');}
@@ -1242,7 +1254,7 @@ async function loadTagsRemote(data){
   const old=data?.globalMemoHashtags||{};
   try{
     if(data?.tagsMigrated){
-      const snap=await memoTagsCol().get();const t={};snap.docs.forEach(d=>{t[d.data().name]=d.data().content||''});
+      const snap=(tagsPrefetch&&await tagsPrefetch)||await memoTagsCol().get();const t={};snap.docs.forEach(d=>{t[d.data().name]=d.data().content||''});
       tagsLegacy=false;savedTags={...t};return t;
     }
     await syncTagsRemote(old,{});
@@ -1270,8 +1282,7 @@ async function loadGlobalMemo(force){
   }
   if(globalMemoLoaded&&!force){renderGlobalMemoHashtags();return}
   try{
-    const doc=await userDoc().get();
-    const data=doc.data();
+    const data=userDocData||(await userDoc().get()).data();
     ta.value=data?.globalMemo||'';
     globalMemoHashtags=await loadTagsRemote(data);
     globalMemoLoaded=true;

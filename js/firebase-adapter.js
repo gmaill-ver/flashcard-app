@@ -57,6 +57,32 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+let dailyPrefetch = null;
+let tagsPrefetch = null;
+let userDocData = null;
+let needsRecount = false;
+
+/* ユーザー文書はキャッシュを優先して即表示し、サーバー最新は裏で反映 */
+async function getUserDocFast() {
+  try {
+    const c = await userDoc().get({ source: 'cache' });
+    if (c.exists) {
+      userDoc().get({ source: 'server' }).then(sv => {
+        if (!sv.exists) return;
+        const d = sv.data();
+        const nd = migrateDecks(d.decks);
+        if (JSON.stringify(nd) !== JSON.stringify(decks)) {
+          decks = nd;
+          if (typeof currentPage !== 'undefined' && currentPage === 'home' && typeof renderDeckList === 'function') renderDeckList();
+        }
+        stats = migrateStats(d.stats);
+      }).catch(() => {});
+      return c;
+    }
+  } catch (e) {}
+  return await userDoc().get();
+}
+
 /* ========== データ管理 ========== */
 async function loadData() {
   if (isGuest) {
@@ -73,7 +99,11 @@ async function loadData() {
 
   // Firebase モード
   try {
-    const doc = await userDoc().get();
+    // 日別統計・タグは並行して先読み（直列待ちを避ける）
+    dailyPrefetch = dailyCol().get().catch(() => null);
+    tagsPrefetch = memoTagsCol().get().catch(() => null);
+    const doc = await getUserDocFast();
+    userDocData = doc.exists ? doc.data() : null;
     let needsMeta = false;
 
     if (doc.exists) {
@@ -150,11 +180,8 @@ async function loadData() {
       await saveDecks();
     }
 
-    // 一度だけ全カードを数え直す（サブデッキ/カテゴリの件数・一覧を再構築）
-    if (!(doc.exists && doc.data().countsV2)) {
-      await recountAllMeta();
-      await userDoc().update({ countsV2: true });
-    }
+    // 一度だけ全カードを数え直す（表示後にバックグラウンドで実行）
+    needsRecount = !(doc.exists && doc.data().countsV2);
 
     cards = [];
   } catch (e) {
@@ -230,7 +257,7 @@ async function loadDailyStatsRemote(d) {
   const old = d.dailyStats || {};
   try {
     if (d.dailyMigrated) {
-      const snap = await dailyCol().get();
+      const snap = (dailyPrefetch && await dailyPrefetch) || await dailyCol().get();
       const out = {};
       snap.docs.forEach(x => { out[x.id] = x.data(); });
       dailyLegacy = false;
