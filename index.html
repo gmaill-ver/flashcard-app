@@ -65,33 +65,6 @@
     .home-tab.active{color:#2196f3;border-bottom-color:#2196f3}
     .home-section{display:none}.home-section.active{display:block}
 
-    /* Claude Chat */
-    .chat-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:12px;background:#f9fafb;border-radius:8px;min-height:150px;max-height:250px}
-    .study-chat{margin-top:16px}
-    .study-chat-toggle{text-align:center;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;font-size:.85rem;color:#2196f3;font-weight:500;transition:all .2s}
-    .study-chat-toggle:hover{background:#f0f7ff}
-    .study-chat-toggle.open{border-radius:10px 10px 0 0;border-bottom:none}
-    .study-chat-body{border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:10px;background:#fff}
-    .chat-message{display:flex;gap:8px;max-width:85%;animation:chatIn .3s ease-out}
-    .chat-message.user{align-self:flex-end;flex-direction:row-reverse}
-    .chat-message.assistant{align-self:flex-start}
-    .chat-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0}
-    .chat-message.user .chat-avatar{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff}
-    .chat-message.assistant .chat-avatar{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff}
-    .chat-bubble{padding:10px 14px;border-radius:12px;font-size:.85rem;line-height:1.5;word-break:break-word}
-    .chat-message.user .chat-bubble{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border-bottom-right-radius:4px}
-    .chat-message.assistant .chat-bubble{background:#fff;color:#333;border:1px solid #e5e7eb;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-    .chat-bubble pre{background:#1f2937;color:#e5e7eb;padding:8px 10px;border-radius:6px;overflow-x:auto;font-size:.8rem;margin:6px 0}
-    .chat-bubble code{font-family:monospace}
-    .chat-input-wrap{display:flex;gap:8px;padding-top:8px}
-    .chat-input{flex:1;border:1px solid #ddd;border-radius:10px;padding:10px 14px;font-size:.85rem;resize:none;outline:none;font-family:inherit;transition:border-color .2s}
-    .chat-input:focus{border-color:#3b82f6}
-    .chat-send{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:.85rem;cursor:pointer;font-weight:600;white-space:nowrap}
-    .chat-send:disabled{opacity:.5;cursor:not-allowed}
-    .chat-loading span{display:inline-block;width:6px;height:6px;background:#aaa;border-radius:50%;margin:0 2px;animation:bounce .6s infinite alternate}
-    .chat-loading span:nth-child(2){animation-delay:.2s}
-    .chat-loading span:nth-child(3){animation-delay:.4s}
-    @keyframes chatIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
     @keyframes bounce{to{transform:translateY(-6px)}}
 
     .deck-list{display:flex;flex-direction:column;gap:4px}
@@ -290,15 +263,6 @@
       <button class="anki-rating-btn incorrect" data-rating="incorrect">×</button>
       <button class="anki-rating-btn understood" data-rating="understood">&#x1f44d;</button>
     </div>
-    <div class="study-chat" id="study-chat" style="display:none">
-      <div class="study-chat-toggle" id="study-chat-toggle">😏 AIに質問する</div>
-      <div class="study-chat-body" id="study-chat-body" style="display:none">
-        <div class="chat-messages" id="chat-messages" style="min-height:150px;max-height:250px"></div>
-        <div class="chat-input-wrap">
-          <textarea class="chat-input" id="chat-input" placeholder="このカードについて質問..." rows="2"></textarea>
-          <button class="chat-send" id="chat-send-btn">送信</button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -505,7 +469,7 @@ function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原�
 async function seedFS(){const ss=[{question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];for(const s of ss){const r=await cardsCol().add(s);cards.push({id:r.id,...s})}}
 
 async function seedKenpo(){
-const KEY='fc_kenpo_seeded_v1';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser||currentUser.email!==CHAT_ALLOWED_EMAIL)return;
+const KEY='fc_kenpo_seeded_v1';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser||currentUser.email!==OWNER_EMAIL)return;
 const DECK='憲法条文';const existK=decks.find(d=>d.name===DECK);if(existK&&(existK.cardCount||0)>0){localStorage.setItem(KEY,'1');return;}
 decks.push({name:DECK,subdecks:[],publishedId:null,cardCount:0,ratings:{incorrect:0,correct:0,understood:0}});
 const kc=[
@@ -564,7 +528,7 @@ localStorage.setItem(KEY,'1');
 console.log('憲法条文デッキ: '+kc.length+'枚のカードを追加しました');
 }
 async function seedKenpoV2(){
-const KEY='fc_kenpo_seeded_v2';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser||currentUser.email!==CHAT_ALLOWED_EMAIL)return;
+const KEY='fc_kenpo_seeded_v2';if(localStorage.getItem(KEY))return;if(isGuest)return;if(!currentUser||currentUser.email!==OWNER_EMAIL)return;
 const DECK='憲法条文';const dk=getDeck(DECK);if(!dk)return;if((dk.cardCount||0)>=40){localStorage.setItem(KEY,'1');return;}
 const extra=[
 {q:'憲法2条　皇位の継承',a:'皇位は世襲のものであり、国会の議決した皇室典範の定めるところにより継承する。',d:'天皇の地位は世襲制。継承順序等は皇室典範（法律）で定める。皇室典範は国会が議決する法律であり、旧憲法下の「皇室の家法」とは性質が異なる。'},
@@ -1028,7 +992,7 @@ document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 document.getElementById('header-user').addEventListener('click',async()=>{if(!confirm('ログアウトしますか？'))return;if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}updateStudyChatVisibility();navigateTo('home');backgroundTasks()}
+async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home');backgroundTasks()}
 async function backgroundTasks(){
   try{
     if(!isGuest){
@@ -1061,7 +1025,7 @@ async function navigateTo(page,data){
   const back=document.getElementById('back-btn'),title=document.getElementById('header-title'),bc=document.getElementById('header-breadcrumb');
   switch(page){
     case'home':showPage('home');back.classList.remove('visible');title.style.display='';title.textContent='ウルトラAnki';bc.classList.remove('visible');renderDeckList();setHomeTab(activeHomeTab);break;
-    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck,currentSubdeck,currentCategory);document.getElementById('loading').classList.add('hidden')}resetStudyChat();await startStudy();break;
+    case'study':showPage('study');back.classList.add('visible');currentDeck=data.deck;currentSubdeck=data.subdeck||null;currentCategory=data.category||null;title.style.display='none';bc.textContent=currentCategory?`${currentDeck} > ${currentSubdeck} > ${currentCategory}`:currentSubdeck?`${currentDeck} > ${currentSubdeck}`:currentDeck;bc.classList.add('visible');studyFilter=LS.load('fc_studyFilter','all');studySort=LS.load('fc_studySort',null);autoShowDetail=LS.load('fc_auto_detail',false);if(!isGuest){showLoading();await loadDeckCards(currentDeck,currentSubdeck,currentCategory);document.getElementById('loading').classList.add('hidden')}await startStudy();break;
     case'public-study':showPage('study');back.classList.add('visible');isPublicStudy=true;title.style.display='';title.textContent=data.title;bc.classList.remove('visible');studyCards=data.cards;studyIndex=0;answerShown=false;document.getElementById('study-filters').innerHTML='';renderStudyCard();break;
     case'manage':showPage('manage');back.classList.add('visible');currentDeck=data;title.style.display='';title.textContent=data+' - 管理';bc.classList.remove('visible');manageSubdeckFilter='';manageSearch='';managePage=0;document.getElementById('manage-search').value='';if(!isGuest){showLoading();await loadDeckCards(currentDeck);document.getElementById('loading').classList.add('hidden')}resetForm();renderManageSubdecks();renderManageList();break;
     case'memo':showPage('memo-modal');back.classList.add('visible');title.style.display='';title.textContent='ノート';bc.classList.remove('visible');loadGlobalMemo();break;
@@ -1722,79 +1686,6 @@ document.getElementById('recount-row').addEventListener('click',async()=>{showLo
 document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;if(isGuest){for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null}LS.save('fc_cards',cards)}else{const snap=await cardsCol().get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{incorrectCount:0,correctCount:0,lastRating:null}));await batch.commit()}}for(const dk of decks){dk.ratings={incorrect:0,correct:0,understood:0}}await saveDecks();showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
 document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
-
-/* ========== Claude Chat ========== */
-/* chatHistory は state.js から読み込み */
-function addChatMsg(role,content){
-  const el=document.getElementById('chat-messages');
-  const d=document.createElement('div');
-  d.className='chat-message '+role;
-  const avatar=role==='user'?'👤':'😏';
-  let html=content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  html=html.replace(/```(\w*)\n?([\s\S]*?)```/g,'<pre><code>$2</code></pre>');
-  html=html.replace(/`([^`]+)`/g,'<code>$1</code>');
-  html=html.replace(/\n/g,'<br>');
-  d.innerHTML=`<div class="chat-avatar">${avatar}</div><div class="chat-bubble">${html}</div>`;
-  el.appendChild(d);
-  el.scrollTop=el.scrollHeight;
-}
-function showChatLoading(){
-  const el=document.getElementById('chat-messages');
-  const d=document.createElement('div');
-  d.className='chat-message assistant';d.id='chat-loading';
-  d.innerHTML='<div class="chat-avatar">😏</div><div class="chat-bubble chat-loading"><span></span><span></span><span></span></div>';
-  el.appendChild(d);el.scrollTop=el.scrollHeight;
-}
-function removeChatLoading(){const e=document.getElementById('chat-loading');if(e)e.remove()}
-/* CHAT_ALLOWED_EMAIL は config.js から読み込み */
-function updateStudyChatVisibility(){const el=document.getElementById('study-chat');if(currentUser&&currentUser.email===CHAT_ALLOWED_EMAIL){el.style.display=''}else{el.style.display='none'}}
-function resetStudyChat(){chatHistory=[];const el=document.getElementById('chat-messages');if(el)el.innerHTML=''}
-async function sendChat(){
-  const input=document.getElementById('chat-input');
-  const btn=document.getElementById('chat-send-btn');
-  if(!currentUser||currentUser.email!==CHAT_ALLOWED_EMAIL){showToast('この機能は利用できません');return}
-  const msg=input.value.trim();
-  if(!msg)return;
-  input.value='';btn.disabled=true;
-  addChatMsg('user',msg);
-  chatHistory.push({role:'user',content:msg});
-  let apiMessages=[...chatHistory];
-  if(studyCards&&studyCards[studyIndex]){
-    const c=studyCards[studyIndex];
-    const ctx=`【現在学習中のカード】\n問題: ${c.question}\n答え: ${c.answer}${c.detail?'\n詳細: '+c.detail:''}`;
-    apiMessages=[{role:'user',content:ctx},{role:'assistant',content:'このカードについてご質問にお答えします。'},  ...chatHistory];
-  }
-  showChatLoading();
-  try{
-    const res=await fetch('https://chatwithclaude-ydgcevv45q-uc.a.run.app',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:apiMessages,userId:currentUser?currentUser.uid:null})
-    });
-    const data=await res.json();
-    removeChatLoading();
-    if(data.content&&data.content[0]){
-      const text=data.content[0].text;
-      chatHistory.push({role:'assistant',content:text});
-      addChatMsg('assistant',text);
-    }else{
-      addChatMsg('assistant','エラーが発生しました。もう一度お試しください。');
-    }
-  }catch(e){
-    removeChatLoading();
-    addChatMsg('assistant','通信エラーが発生しました。');
-  }
-  btn.disabled=false;input.focus();
-}
-document.getElementById('chat-send-btn').addEventListener('click',sendChat);
-document.getElementById('chat-input').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}
-});
-document.getElementById('study-chat-toggle').addEventListener('click',()=>{
-  const body=document.getElementById('study-chat-body');
-  const toggle=document.getElementById('study-chat-toggle');
-  if(body.style.display==='none'){body.style.display='';toggle.classList.add('open');toggle.textContent='😏 チャットを閉じる'}
-  else{body.style.display='none';toggle.classList.remove('open');toggle.textContent='😏 AIに質問する'}
-});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}

@@ -48,8 +48,6 @@ let statsChart = null;
 let statsRange = 'day';
 let statsFilterDeck = '';
 
-// Chat
-let chatHistory = [];
 
 // ハッシュタグ
 let globalMemoHashtags = {}; // グローバルノートのハッシュタグ {tag: メモテキスト}

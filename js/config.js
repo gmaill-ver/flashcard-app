@@ -13,5 +13,4 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 db.enablePersistence().catch(() => {});
 
-const CHAT_ALLOWED_EMAIL = 'u.t.o0911@gmail.com';
-const CHAT_API_KEY = 'sk-proj-9lG6FI0S8T2vGmMp2Y6nT3K1pQ4R5lY6z7X8W9V0U1a2B3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4';
+const OWNER_EMAIL = 'u.t.o0911@gmail.com';
