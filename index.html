@@ -1578,7 +1578,7 @@ function renderManageCategoryChips(subdeck){
   if(!dk||!subdeck){el.innerHTML='';return}
   const cats=(dk.categoryMap||{})[subdeck]||[];
   if(!cats.length){el.innerHTML='<div style="font-size:.82rem;color:#aaa;padding:4px 0">カテゴリなし</div>';return}
-  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span><span class="cat-chip-delete" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}"</div>`).join('');
+  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span></div>`).join('');
   const cdRow=document.getElementById('category-delete-row'),cdSel=document.getElementById('category-delete-sel');
   cdRow.style.display='flex';cdSel.innerHTML='<option value="">削除するカテゴリを選択...</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
   document.getElementById('category-delete-btn').onclick=async()=>{
