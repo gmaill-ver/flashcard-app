@@ -484,7 +484,7 @@
   </div></div>
   <div class="modal-overlay" id="export-modal"><div class="modal">
     <h3>&#x1f4be; バックアップの準備ができました</h3>
-    <div id="export-info" style="font-size:.85rem;color:#555;line-height:1.7;margin-bottom:12px"></div>
+    <div id="export-info" style="white-space:pre-line;font-size:.85rem;color:#555;line-height:1.7;margin-bottom:12px"></div>
     <button class="btn btn-blue" id="export-save-btn" style="width:100%">保存する（共有メニューを開く）</button>
     <a id="export-dl-link" style="display:block;text-align:center;margin-top:12px;font-size:.82rem;color:#2196f3">うまくいかない時はこちらからダウンロード</a>
     <button class="modal-close" id="export-close">閉じる</button>
@@ -1871,33 +1871,35 @@ document.getElementById('exam-settings-close').addEventListener('click',()=>docu
 document.getElementById('exam-settings-save').addEventListener('click',async()=>{await saveExamSettings();document.getElementById('exam-settings-modal').classList.remove('active');showToast('保存しました');renderExam()});
 
 /* ========== データ書き出し（バックアップ） ========== */
-let exportFile=null,exportUrl=null;
+let exportFile=null,exportUrl=null,exportPartial=false;
 async function exportAllData(){
   showLoading();
   try{
-    let data;
+    let data;exportPartial=false;
     if(isGuest){
       data={decks,cards,stats,dailyStats,globalMemo:LS.load('fc_memo',''),pastExam};
     }else{
       const msg=document.getElementById('loading-msg');const say=t=>{if(msg)msg.textContent=t};
       const withTimeout=(pr,ms,label)=>Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej(new Error(label+'がタイムアウト')),ms))]);
+      let partial=false;
+      const fetchQ=async(q,ms,label)=>{try{return await withTimeout(q.get(),ms,label)}catch(e){if(e&&e.code==='permission-denied')throw e;partial=true;return await q.get({source:'cache'})}};
       say('ユーザー情報を取得中...');
-      const ud=await withTimeout(userDoc().get(),30000,'ユーザー情報');
+      const ud=await fetchQ(userDoc(),15000,'ユーザー情報');
       const u=ud.exists?ud.data():{};
       say('統計・ノートを取得中...');
-      const [ds,ts]=await Promise.all([withTimeout(dailyCol().get(),30000,'日別統計').catch(()=>({docs:[]})),withTimeout(memoTagsCol().get(),30000,'タグ').catch(()=>({docs:[]}))]);
+      const [ds,ts]=await Promise.all([fetchQ(dailyCol(),15000,'日別統計').catch(()=>({docs:[]})),fetchQ(memoTagsCol(),15000,'タグ').catch(()=>({docs:[]}))]);
       const dailyStatsOut={};ds.docs.forEach(d=>{dailyStatsOut[d.id]=d.data()});
       const tags={};ts.docs.forEach(d=>{tags[d.data().name]=d.data().content||''});
       const allCards=[];let cursor=null;
       while(true){
         say(`カードを取得中... ${allCards.length}枚`);
         let q=cardsCol().limit(300);if(cursor)q=q.startAfter(cursor);
-        const snap=await withTimeout(q.get(),60000,'カード');
+        const snap=await fetchQ(q,20000,'カード');
         snap.docs.forEach(d=>allCards.push({id:d.id,...d.data()}));
         if(snap.docs.length<300)break;
         cursor=snap.docs[snap.docs.length-1];
       }
-      say('');
+      say('');exportPartial=partial;
       data={decks:u.decks||[],cards:allCards,stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:Object.keys(tags).length?tags:(u.globalMemoHashtags||{}),studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
     }
     data.exportedAt=new Date().toISOString();data.version=1;
@@ -1907,7 +1909,7 @@ async function exportAllData(){
     if(exportUrl)URL.revokeObjectURL(exportUrl);
     exportUrl=URL.createObjectURL(blob);
     const link=document.getElementById('export-dl-link');link.href=exportUrl;link.download=exportFile.name;
-    document.getElementById('export-info').textContent=`カード${data.cards.length}枚・${Math.round(blob.size/1024)}KB。下のボタンを押して「ファイルに保存」を選んでください。`;
+    document.getElementById('export-info').textContent=`カード${data.cards.length}枚・${Math.round(blob.size/1024)}KB。下のボタンを押して「ファイルに保存」を選んでください。`+(exportPartial?'\n※通信が不安定だったため、端末内に保存されているデータから書き出しました。最新でない可能性があります。':'');
     document.getElementById('export-modal').classList.add('active');
     document.getElementById('export-modal').style.zIndex='20000';
   }catch(e){console.error(e);const em='書き出しに失敗しました\n'+(e&&e.name?e.name+': ':'')+(e&&e.message?e.message:String(e));showToast('書き出しに失敗しました');alert(em)}
