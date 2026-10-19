@@ -150,11 +150,60 @@ async function loadData() {
       await saveDecks();
     }
 
+    // 一度だけ全カードを数え直す（サブデッキ/カテゴリの件数・一覧を再構築）
+    if (!(doc.exists && doc.data().countsV2)) {
+      await recountAllMeta();
+      await userDoc().update({ countsV2: true });
+    }
+
     cards = [];
   } catch (e) {
     console.error(e);
     showToast('読み込み失敗');
   }
+}
+
+/* 全カードを数え直して、デッキ/サブデッキ/カテゴリのメタ情報を再構築 */
+async function recountAllMeta() {
+  let all;
+  if (isGuest) {
+    all = cards;
+  } else {
+    const snap = await cardsCol().get();
+    all = snap.docs.map(d => d.data());
+  }
+  for (const dk of decks) {
+    const dc = all.filter(c => c.deck === dk.name);
+    dk.cardCount = dc.length;
+    dk.ratings = {
+      incorrect: dc.filter(c => c.lastRating === 'incorrect').length,
+      correct: dc.filter(c => c.lastRating === 'correct').length,
+      understood: dc.filter(c => c.lastRating === 'understood').length
+    };
+    const sds = dk.subdecks || [];
+    for (const c of dc) {
+      if (c.subdeck && !sds.includes(c.subdeck)) sds.push(c.subdeck);
+    }
+    dk.subdecks = sds;
+    const cm = dk.categoryMap || {};
+    const sc = {};
+    const cc = {};
+    for (const sd of sds) {
+      const sdc = dc.filter(c => c.subdeck === sd);
+      sc[sd] = sdc.length;
+      const cats = cm[sd] || [];
+      for (const c of sdc) {
+        if (c.category && !cats.includes(c.category)) cats.push(c.category);
+      }
+      if (cats.length) cm[sd] = cats;
+      cc[sd] = {};
+      for (const cat of cats) cc[sd][cat] = sdc.filter(c => c.category === cat).length;
+    }
+    dk.subdeckCounts = sc;
+    dk.categoryMap = cm;
+    dk.categoryCounts = cc;
+  }
+  await saveDecks();
 }
 
 async function saveDecks() {
