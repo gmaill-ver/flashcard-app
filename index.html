@@ -1909,7 +1909,8 @@ async function exportAllData(){
     const link=document.getElementById('export-dl-link');link.href=exportUrl;link.download=exportFile.name;
     document.getElementById('export-info').textContent=`カード${data.cards.length}枚・${Math.round(blob.size/1024)}KB。下のボタンを押して「ファイルに保存」を選んでください。`;
     document.getElementById('export-modal').classList.add('active');
-  }catch(e){console.error(e);showToast('書き出しに失敗しました: '+(e&&e.message?e.message:''))}
+    document.getElementById('export-modal').style.zIndex='20000';
+  }catch(e){console.error(e);const em='書き出しに失敗しました\n'+(e&&e.name?e.name+': ':'')+(e&&e.message?e.message:String(e));showToast('書き出しに失敗しました');alert(em)}
   const lm=document.getElementById('loading-msg');if(lm)lm.textContent='';
   document.getElementById('loading').classList.add('hidden');
 }
