@@ -1802,7 +1802,7 @@ function renderExam(){
   });
 }
 function examYearRowHtml(label,idx){
-  return `<div class="ex-year-row" data-idx="${idx}"><input type="text" class="ex-year-name" placeholder="年度（例: R7）" value="${esc(label)}"><button class="btn btn-sm ex-year-del" type="button" style="background:#ff5252;color:#fff">削除</button></div>`;
+  return `<div class="ex-year-row" data-idx="${idx}"><input type="text" class="ex-year-name" placeholder="年度（例: R7）" value="${esc(label)}"><button class="ex-year-del" type="button" title="削除" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px">&#x1f5d1;&#xfe0f;</button></div>`;
 }
 function renderExamSettings(){
   const body=document.getElementById('exam-settings-body');
