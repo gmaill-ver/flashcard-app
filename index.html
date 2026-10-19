@@ -1185,14 +1185,16 @@ function getStudyPool(){
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
-let prefetching=false;
-async function maybePrefetchStudy(){if(isGuest||isPublicStudy||!cardHasMore||prefetching||studyIndex<studyCards.length-20)return;prefetching=true;try{const added=await loadMoreCards();const ids=new Set(added.map(c=>c.id));studyCards=studyCards.concat(getStudyPool().filter(c=>ids.has(c.id)));renderStudyFilters()}finally{prefetching=false}}
-async function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
+function studyScopeTotal(){const dk=getDeck(currentDeck);if(!dk)return 0;if(currentCategory)return dk.categoryCounts?.[currentSubdeck]?.[currentCategory]||0;if(currentSubdeck)return dk.subdeckCounts?.[currentSubdeck]||0;return dk.cardCount||0}
+let bgLoading=false;
+async function backgroundLoadRest(){if(isGuest||isPublicStudy||bgLoading)return;bgLoading=true;const sc=cardScope;try{while(cardHasMore&&cardScope===sc&&currentPage==='study'){const added=await loadMoreCards();if(!added.length)break;if(cardScope!==sc)break;const ids=new Set(added.map(c=>c.id));studyCards=studyCards.concat(getStudyPool().filter(c=>ids.has(c.id)));renderStudyFilters();updateStudyProgress()}}finally{bgLoading=false}}
+function updateStudyProgress(){if(!studyCards.length)return;const t=(!isPublicStudy&&studyFilter==='all')?Math.max(studyScopeTotal(),studyCards.length):studyCards.length;document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${t}`;document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/t)*100}%`}
+async function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo();backgroundLoadRest()}
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
   if(isPublicStudy){document.getElementById('study-filters').innerHTML='';sortEl.innerHTML='';return}
   const pool=currentCategory?categoryCards(currentDeck,currentSubdeck,currentCategory):currentSubdeck?subdeckCards(currentDeck,currentSubdeck):deckCards(currentDeck);
-  const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
+  const fs=[{key:'all',label:'全',count:isGuest?pool.length:Math.max(studyScopeTotal(),pool.length)},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;LS.save('fc_studyFilter',studyFilter);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
   sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
@@ -1205,8 +1207,7 @@ function renderStudyCard(){
   const dtW=document.getElementById('anki-detail-wrap'),dtE=document.getElementById('anki-detail'),dtT=document.getElementById('anki-detail-toggle');
   if(!studyCards.length){qE.textContent='カードがありません';aE.style.display='none';dv.style.display='none';rt.style.display='none';cs.style.display='none';dtW.style.display='none';document.getElementById('study-progress-text').textContent='0 / 0';document.getElementById('study-progress-fill').style.width='0%';lb.textContent='';return}
   const card=studyCards[studyIndex];
-  document.getElementById('study-progress-text').textContent=`${studyIndex+1} / ${studyCards.length}`;
-  document.getElementById('study-progress-fill').style.width=`${((studyIndex+1)/studyCards.length)*100}%`;
+  updateStudyProgress();
   qE.textContent=card.question;aE.textContent=card.answer;
   const xc=card.incorrectCount||0,oc=card.correctCount||0;if(xc||oc){let m='';for(let i=0;i<xc;i++)m+='<span class="mark-x">×</span>';for(let i=0;i<oc;i++)m+='<span class="mark-o">◯</span>';cs.innerHTML=m;cs.style.display='block'}else{cs.style.display='none'}
   rt.style.display='flex';
@@ -1454,14 +1455,14 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
   await updateCard(card.id,upd);await saveStats();
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
-  studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;maybePrefetchStudy();
+  studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
   renderStudyFilters();
   if(isPlaying){if(playTimer)clearTimeout(playTimer);autoPlayNext()}else{renderStudyCard()}
 })});
 
 document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){studySort='shuffle';LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;const sel=document.getElementById('study-sort-select');if(sel)sel.value='shuffle';renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
 function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;&#xfe0e;';ap.classList.remove('active')}}
-function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct',currentDeck);saveStats()}studyIndex=(studyIndex+1)%studyCards.length;maybePrefetchStudy();autoPlayNext()},aD)},qD)}
+function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct',currentDeck);saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
 
 /* ========== Manage ========== */
 function renderPublishSection(){
