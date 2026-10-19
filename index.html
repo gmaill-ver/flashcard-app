@@ -1885,7 +1885,7 @@ async function exportAllData(){
       const ud=await withTimeout(userDoc().get(),30000,'ユーザー情報');
       const u=ud.exists?ud.data():{};
       say('統計・ノートを取得中...');
-      const [ds,ts]=await Promise.all([withTimeout(dailyCol().get(),30000,'日別統計'),withTimeout(memoTagsCol().get(),30000,'タグ')]);
+      const [ds,ts]=await Promise.all([withTimeout(dailyCol().get(),30000,'日別統計').catch(()=>({docs:[]})),withTimeout(memoTagsCol().get(),30000,'タグ').catch(()=>({docs:[]}))]);
       const dailyStatsOut={};ds.docs.forEach(d=>{dailyStatsOut[d.id]=d.data()});
       const tags={};ts.docs.forEach(d=>{tags[d.data().name]=d.data().content||''});
       const allCards=[];let cursor=null;
@@ -1898,7 +1898,7 @@ async function exportAllData(){
         cursor=snap.docs[snap.docs.length-1];
       }
       say('');
-      data={decks:u.decks||[],cards:allCards,stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:tags,studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
+      data={decks:u.decks||[],cards:allCards,stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:Object.keys(tags).length?tags:(u.globalMemoHashtags||{}),studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
     }
     data.exportedAt=new Date().toISOString();data.version=1;
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
