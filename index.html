@@ -1879,11 +1879,26 @@ async function exportAllData(){
     if(isGuest){
       data={decks,cards,stats,dailyStats,globalMemo:LS.load('fc_memo',''),pastExam};
     }else{
-      const [ud,cs,ds,ts]=await Promise.all([userDoc().get({source:'server'}),cardsCol().get({source:'server'}),dailyCol().get({source:'server'}),memoTagsCol().get({source:'server'})]);
+      const msg=document.getElementById('loading-msg');const say=t=>{if(msg)msg.textContent=t};
+      const withTimeout=(pr,ms,label)=>Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej(new Error(label+'がタイムアウト')),ms))]);
+      say('ユーザー情報を取得中...');
+      const ud=await withTimeout(userDoc().get(),30000,'ユーザー情報');
       const u=ud.exists?ud.data():{};
+      say('統計・ノートを取得中...');
+      const [ds,ts]=await Promise.all([withTimeout(dailyCol().get(),30000,'日別統計'),withTimeout(memoTagsCol().get(),30000,'タグ')]);
       const dailyStatsOut={};ds.docs.forEach(d=>{dailyStatsOut[d.id]=d.data()});
       const tags={};ts.docs.forEach(d=>{tags[d.data().name]=d.data().content||''});
-      data={decks:u.decks||[],cards:cs.docs.map(d=>({id:d.id,...d.data()})),stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:tags,studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
+      const allCards=[];let cursor=null;
+      while(true){
+        say(`カードを取得中... ${allCards.length}枚`);
+        let q=cardsCol().limit(300);if(cursor)q=q.startAfter(cursor);
+        const snap=await withTimeout(q.get(),60000,'カード');
+        snap.docs.forEach(d=>allCards.push({id:d.id,...d.data()}));
+        if(snap.docs.length<300)break;
+        cursor=snap.docs[snap.docs.length-1];
+      }
+      say('');
+      data={decks:u.decks||[],cards:allCards,stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:tags,studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
     }
     data.exportedAt=new Date().toISOString();data.version=1;
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -1894,7 +1909,8 @@ async function exportAllData(){
     const link=document.getElementById('export-dl-link');link.href=exportUrl;link.download=exportFile.name;
     document.getElementById('export-info').textContent=`カード${data.cards.length}枚・${Math.round(blob.size/1024)}KB。下のボタンを押して「ファイルに保存」を選んでください。`;
     document.getElementById('export-modal').classList.add('active');
-  }catch(e){console.error(e);showToast('書き出しに失敗しました')}
+  }catch(e){console.error(e);showToast('書き出しに失敗しました: '+(e&&e.message?e.message:''))}
+  const lm=document.getElementById('loading-msg');if(lm)lm.textContent='';
   document.getElementById('loading').classList.add('hidden');
 }
 document.getElementById('export-save-btn').addEventListener('click',async()=>{
