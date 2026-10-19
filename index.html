@@ -30,7 +30,6 @@
   <script src="js/config.js"></script>
   <script src="js/state.js"></script>
   <script src="js/firebase-adapter.js"></script>
-  <script src="js/modules.js"></script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;background:#f0f0f0;min-height:100vh;color:#333}
@@ -486,14 +485,7 @@
   <div class="toast" id="toast"></div>
 
 <script>
-/* ========== 分割ファイルから読み込み済み ========== */
-/* - config.js: Firebase 初期化、CHAT_ALLOWED_EMAIL */
-/* - state.js: グローバル状態、LS オブジェクト、showToast */
-/* - firebase-adapter.js: Firestore 操作（userDoc, cardsCol, migrateDecks 等） */
-/* - modules.js: ビジネスロジック（getDeck, seedSample 等） */
-
-/* loadData, saveDecks, saveStats, addCard, updateCard, removeCard は firebase-adapter.js から読み込み */
-/* todayStr, trackDaily は firebase-adapter.js から読み込み */
+/* config.js / state.js / firebase-adapter.js は js/ から読み込み。それ以外のロジックはこのファイルに記述（同名関数を js/ に重複して置かないこと） */
 function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
 function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
 const CARD_LOAD_LIMIT=150;

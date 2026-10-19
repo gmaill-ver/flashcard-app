@@ -81,29 +81,3 @@ function hideLoading() {
   if (el) el.classList.add('hidden');
 }
 
-function showToast(msg, duration = 2000) {
-  const existing = document.getElementById('app-toast');
-  if (existing) existing.remove();
-
-  const toast = document.createElement('div');
-  toast.id = 'app-toast';
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #333;
-    color: #fff;
-    padding: 12px 24px;
-    border-radius: 10px;
-    z-index: 2000;
-    font-size: 0.9rem;
-    animation: slideUp 0.3s ease-out;
-  `;
-  toast.textContent = msg;
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    if (toast.parentNode) toast.parentNode.removeChild(toast);
-  }, duration);
-}
