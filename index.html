@@ -469,6 +469,7 @@
       <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f3f7; カテゴリ</div>
       <select id="category-subdeck-sel" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;margin-bottom:8px;background:#fff"><option value="">サブデッキを選択...</option></select>
       <div class="subdeck-chips" id="category-chips"></div>
+      <div id="category-delete-row" style="display:none;gap:8px;margin-top:4px;margin-bottom:8px"><select id="category-delete-sel" style="flex:1;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font-size:.82rem;background:#fff"><option value="">削除するカテゴリを選択...</option></select><button class="btn btn-sm" id="category-delete-btn" style="background:#ff5252;color:#fff;white-space:nowrap">削除</button></div>
       <div class="add-deck-row" id="category-add-row" style="display:none"><input type="text" id="new-category-input" placeholder="カテゴリ名"><button class="btn btn-blue btn-sm" id="add-category-btn">追加</button></div>
     </div>
     <div id="publish-section">
@@ -1224,7 +1225,7 @@ let globalMemoTimer=null;
 
 function renderGlobalMemoHashtags(){
   const list=document.getElementById('global-memo-hashtag-list');
-  const tags=Object.keys(globalMemoHashtags).sort();
+  const tags=Object.keys(globalMemoHashtags).sort((a,b)=>a.replace(/^#/,'').localeCompare(b.replace(/^#/,''),'ja'));
   list.innerHTML=tags.map(tag=>`<button class="global-hashtag-btn" data-tag="${esc(tag)}" style="background:#e0f2ff;color:#0066cc;padding:4px 10px;border-radius:14px;font-size:.8rem;cursor:pointer;border:1px solid #b3d9ff">#${esc(tag)}</button>`).join('')
 }
 
@@ -1310,7 +1311,7 @@ async function persistGlobalHashtags(){
 
 function renderTagsSettingsList(){
   const list=document.getElementById('tags-settings-list');
-  const tags=Object.keys(globalMemoHashtags).sort();
+  const tags=Object.keys(globalMemoHashtags).sort((a,b)=>a.replace(/^#/,'').localeCompare(b.replace(/^#/,''),'ja'));
   if(tags.length===0){
     list.innerHTML='<p style="color:#999;font-size:0.9rem">タグはまだありません</p>';
     return;
@@ -1573,19 +1574,21 @@ function renderManageCategorySection(){
 }
 function renderManageCategoryChips(subdeck){
   const dk=getDeck(currentDeck);const el=document.getElementById('category-chips');
-  document.getElementById('category-add-row').style.display=(dk&&subdeck)?'flex':'none';
+  document.getElementById('category-add-row').style.display=(dk&&subdeck)?'flex':'none';document.getElementById('category-delete-row').style.display='none';
   if(!dk||!subdeck){el.innerHTML='';return}
   const cats=(dk.categoryMap||{})[subdeck]||[];
   if(!cats.length){el.innerHTML='<div style="font-size:.82rem;color:#aaa;padding:4px 0">カテゴリなし</div>';return}
-  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span><span class="cat-chip-delete" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="削除" style="margin-left:6px">&#x1f5d1;</span></div>`).join('');
-  el.querySelectorAll('.cat-chip-delete').forEach(btn=>{btn.addEventListener('click',async()=>{
-    const cat=btn.dataset.cat,sd=btn.dataset.sd;const dk=getDeck(currentDeck);
+  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span><span class="cat-chip-delete" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}"</div>`).join('');
+  const cdRow=document.getElementById('category-delete-row'),cdSel=document.getElementById('category-delete-sel');
+  cdRow.style.display='flex';cdSel.innerHTML='<option value="">削除するカテゴリを選択...</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  document.getElementById('category-delete-btn').onclick=async()=>{
+    const cat=cdSel.value,sd=subdeck;const dk=getDeck(currentDeck);if(!cat)return;
     if(!confirm(`カテゴリ「${cat}」を削除？\nカードのカテゴリ指定は解除されます`))return;
     for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd&&c.category===cat)c.category=''}
     if(isGuest){LS.save('fc_cards',cards)}else{try{const snap=await cardsCol().where('deck','==',currentDeck).where('subdeck','==',sd).get();const docs=snap.docs.filter(d=>d.data().category===cat);for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(d=>b.update(d.ref,{category:''}));await b.commit()}}catch(e){console.error(e);showToast('削除に失敗しました');return}}
     dk.categoryMap[sd]=(dk.categoryMap[sd]||[]).filter(x=>x!==cat);if(dk.categoryCounts?.[sd])delete dk.categoryCounts[sd][cat];
     await saveDecks();renderManageCategoryChips(sd);document.getElementById('card-subdeck-select').onchange();renderManageList();renderDeckList();showToast('削除しました');
-  })});
+  };
   el.querySelectorAll('.cat-chip-rename').forEach(btn=>{btn.addEventListener('click',async()=>{
     const oldCat=btn.dataset.cat,sd=btn.dataset.sd;
     const newCat=prompt('新しいカテゴリ名:',oldCat);
