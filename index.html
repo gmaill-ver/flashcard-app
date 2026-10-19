@@ -496,7 +496,7 @@
 /* todayStr, trackDaily は firebase-adapter.js から読み込み */
 function syncAllDeckMeta(){for(const dk of decks){const dc=cards.filter(c=>c.deck===dk.name);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}}
 function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const dc=cards.filter(c=>c.deck===currentDeck);dk.cardCount=dc.length;dk.ratings={incorrect:dc.filter(c=>c.lastRating==='incorrect').length,correct:dc.filter(c=>c.lastRating==='correct').length,understood:dc.filter(c=>c.lastRating==='understood').length}}
-const CARD_LOAD_LIMIT=100;
+const CARD_LOAD_LIMIT=150;
 let cardCursor=null,cardHasMore=false,cardScope=null;
 function scopedCardsQuery(sc){let q=cardsCol().where('deck','==',sc.name);if(sc.sd)q=q.where('subdeck','==',sc.sd);if(sc.cat)q=q.where('category','==',sc.cat);return q}
 async function loadDeckCards(name,sd,cat){if(isGuest)return;cards=[];cardCursor=null;cardHasMore=false;cardScope={name,sd:sd||null,cat:cat||null};return await loadMoreCards()}
@@ -1193,7 +1193,6 @@ function renderStudyFilters(){
   const fs=[{key:'all',label:'全',count:pool.length},{key:'unrated',label:'未',count:countU(pool)},{key:'incorrect',label:'×',count:countR(pool,'incorrect')},{key:'correct',label:'◯',count:countR(pool,'correct')},{key:'understood',label:'&#x1f44d;',count:countR(pool,'understood')}];
   document.getElementById('study-filters').innerHTML=fs.map(f=>`<button class="study-filter-btn ${studyFilter===f.key?'active':''}" data-filter="${f.key}">${f.label}<span class="filter-count">${f.count}</span></button>`).join('');
   document.querySelectorAll('.study-filter-btn').forEach(b=>{b.addEventListener('click',()=>{studyFilter=b.dataset.filter;LS.save('fc_studyFilter',studyFilter);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyFilters();renderStudyCard()})});
-  if(!isGuest&&cardHasMore){const fe=document.getElementById('study-filters');const mb=document.createElement('button');mb.className='study-filter-btn';mb.textContent=`＋次の${CARD_LOAD_LIMIT}枚を読み込む（${cards.length}枚読込済）`;mb.addEventListener('click',async()=>{mb.disabled=true;mb.textContent='読み込み中...';const added=await loadMoreCards();const ids=new Set(added.map(c=>c.id));const more=getStudyPool().filter(c=>ids.has(c.id));studyCards=studyCards.concat(more);renderStudyFilters();renderStudyCard()});fe.appendChild(mb)}
   sortEl.innerHTML='<select id="study-sort-select"><option value="">並び順</option><option value="incorrect-desc">× 多い順</option><option value="incorrect-asc">× 少ない順</option><option value="correct-desc">◯ 多い順</option><option value="correct-asc">◯ 少ない順</option><option value="shuffle">シャッフル</option></select><button class="study-icon-btn" id="shuffle-btn" title="シャッフル">&#x1f500;</button><button class="study-icon-btn" id="autoplay-btn" title="自動再生">'+(isPlaying?'&#x25a0;':'&#x25b6;&#xfe0e;')+'</button>';
   document.getElementById('study-sort-select').value=studySort||'';
   document.getElementById('study-sort-select').addEventListener('change',e=>{studySort=e.target.value||null;LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard()});
@@ -1583,11 +1582,11 @@ function renderManageList(){
   el.innerHTML=pageItems.map(c=>{let tags='';if(c.subdeck)tags+=`<span class="card-item-tag tag-subdeck">${esc(c.subdeck)}</span>`;if(c.incorrectCount)tags+=`<span class="card-item-tag tag-incorrect">× ${c.incorrectCount}</span>`;if(c.correctCount)tags+=`<span class="card-item-tag tag-correct">◯ ${c.correctCount}</span>`;return`<div class="card-item"><div class="card-item-content"><div class="card-item-q">${esc(c.question)}</div><div class="card-item-a">${esc(c.answer)}</div>${tags?`<div class="card-item-tags">${tags}</div>`:''}</div><div class="card-item-actions"><button class="card-item-btn" data-act="edit" data-id="${c.id}">&#x270f;</button><button class="card-item-btn" data-act="del" data-id="${c.id}">&#x1f5d1;</button></div></div>`}).join('');
   el.querySelectorAll('.card-item-btn').forEach(b=>{b.addEventListener('click',()=>{if(b.dataset.act==='edit')editCardAction(b.dataset.id);if(b.dataset.act==='del')deleteCardAction(b.dataset.id)})});
   if(totalPages>1){
-    const pages=[];const add=n=>{if(!pages.includes(n)&&n>=0&&n<totalPages)pages.push(n)};add(0);for(let i=managePage-2;i<=managePage+2;i++)add(i);add(totalPages-1);pages.sort((x,y)=>x-y);
-    let h=`<button class="btn btn-outline btn-sm" data-pg="${managePage-1}" ${managePage===0?'disabled':''}>&lt; 前</button>`;let prev=-1;
-    for(const n of pages){if(prev>=0&&n-prev>1)h+='<span style="color:#999">…</span>';h+=`<button class="btn btn-sm ${n===managePage?'btn-blue':'btn-outline'}" data-pg="${n}" style="min-width:34px;padding:6px 8px">${n+1}</button>`;prev=n}
+    const pages=[];const st=Math.max(0,Math.min(managePage-1,totalPages-4));for(let i=st;i<Math.min(totalPages,st+4);i++)pages.push(i);
+    let h=`<button class="btn btn-outline btn-sm" data-pg="${managePage-1}" ${managePage===0?'disabled':''}>&lt; 前</button>`;
+    for(const n of pages){h+=`<button class="btn btn-sm ${n===managePage?'btn-blue':'btn-outline'}" data-pg="${n}" style="min-width:34px;padding:6px 8px">${n+1}</button>`;}
     h+=`<button class="btn btn-outline btn-sm" data-pg="${managePage+1}" ${managePage>=totalPages-1?'disabled':''}>次 &gt;</button>`;
-    pgEl.style.cssText='display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center';pgEl.innerHTML=h;
+    pgEl.style.cssText='display:flex;flex-wrap:nowrap;gap:6px;justify-content:center;align-items:center';pgEl.innerHTML=h;
     pgEl.querySelectorAll('button[data-pg]').forEach(btn=>btn.addEventListener('click',async()=>{const n=parseInt(btn.dataset.pg);if(isNaN(n)||n<0||n>=totalPages||n===managePage)return;if(!isGuest&&!manageSearch){const need=(n+1)*MANAGE_PER_PAGE;if(cards.length<need&&cardHasMore){showLoading();while(cardHasMore&&cards.length<need)await loadMoreCards();document.getElementById('loading').classList.add('hidden')}}managePage=n;renderManageList()}))
   }else{pgEl.innerHTML=''}
   }catch(e){console.error('renderManageList error:',e)}
