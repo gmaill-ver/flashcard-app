@@ -499,7 +499,11 @@ function syncCurrentDeckMeta(){const dk=getDeck(currentDeck);if(!dk)return;const
 const CARD_LOAD_LIMIT=150;
 let cardCursor=null,cardHasMore=false,cardScope=null;
 function scopedCardsQuery(sc){let q=cardsCol().where('deck','==',sc.name);if(sc.sd)q=q.where('subdeck','==',sc.sd);if(sc.cat)q=q.where('category','==',sc.cat);return q}
-async function loadDeckCards(name,sd,cat){if(isGuest)return;cards=[];cardCursor=null;cardHasMore=false;cardScope={name,sd:sd||null,cat:cat||null};return await loadMoreCards()}
+async function loadDeckCards(name,sd,cat){if(isGuest)return;cards=[];cardCursor=null;cardHasMore=false;const sc=cardScope={name,sd:sd||null,cat:cat||null};
+  try{const snap=await scopedCardsQuery(sc).limit(CARD_LOAD_LIMIT).get({source:'cache'});if(snap.docs.length){cards=snap.docs.map(d=>({id:d.id,...d.data()}));cardCursor=snap.docs[snap.docs.length-1];cardHasMore=snap.docs.length===CARD_LOAD_LIMIT;
+    scopedCardsQuery(sc).limit(CARD_LOAD_LIMIT).get({source:'server'}).then(sv=>{if(cardScope!==sc)return;const fresh=new Map(sv.docs.map(d=>[d.id,{id:d.id,...d.data()}]));cards=cards.filter(c=>fresh.has(c.id)||!snap.docs.some(d=>d.id===c.id)).map(c=>fresh.get(c.id)||c);const have=new Set(cards.map(c=>c.id));for(const c of fresh.values())if(!have.has(c.id))cards.push(c)}).catch(()=>{});
+    return cards}}catch(e){}
+  return await loadMoreCards()}
 async function loadMoreCards(){if(isGuest||!cardScope||(!cardHasMore&&cardCursor))return[];try{let q=scopedCardsQuery(cardScope).limit(CARD_LOAD_LIMIT);if(cardCursor)q=q.startAfter(cardCursor);const snap=await q.get();const added=snap.docs.map(d=>({id:d.id,...d.data()}));cards=cards.concat(added);if(snap.docs.length)cardCursor=snap.docs[snap.docs.length-1];else cardCursor=cardCursor||{};cardHasMore=snap.docs.length===CARD_LOAD_LIMIT;return added}catch(e){console.error(e);showToast('カード読み込み失敗');return[]}}
 
 function seedSample(){cards=[{id:'1',question:'民法第1条の3つの基本原則は？',answer:'①公共の福祉適合の原則\n②信義誠実の原則\n③権利濫用禁止の原則',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'2',question:'憲法第9条の内容は？',answer:'第1項：戦争の放棄\n第2項：戦力の不保持、交戦権の否認',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()},{id:'3',question:'尊属殺重罰規定違憲判決のポイントは？',answer:'刑法200条は法の下の平等（憲法14条1項）に違反し無効。',deck:'デフォルト',subdeck:'',lastRating:null,created:new Date().toISOString()}];LS.save('fc_cards',cards)}
