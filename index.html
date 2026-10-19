@@ -99,6 +99,25 @@
     .btn-outline{background:none;border:1px solid #ddd;color:#555}.btn-outline:hover{background:#f5f5f5}
 
 
+    /* 過去問チェック */
+    .ex-sel{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+    .ex-sel button{flex:1;min-width:0;padding:10px 8px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:.85rem;color:#555;cursor:pointer}
+    .ex-sel button.active{background:#2196f3;border-color:#2196f3;color:#fff}
+    .ex-summary{font-size:.8rem;color:#666;margin-bottom:10px;line-height:1.7}
+    .ex-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f0f0f0}
+    .ex-q{flex:0 0 52px}
+    .ex-q,.ex-c{height:38px;border:1px solid #ddd;border-radius:8px;background:#fff;color:#444;font-size:.85rem;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation}
+    .ex-c{flex:0 0 38px}
+    .ex-q{font-weight:600}
+    .ex-q.s1,.ex-c.s1{background:#2196f3;border-color:#2196f3;color:#fff}
+    .ex-q.s2,.ex-c.s2{background:#bdbdbd;border-color:#bdbdbd;color:#fff}
+    .ex-set-item{border:1px solid #e0e0e0;border-radius:10px;padding:10px;margin-bottom:10px}
+    .ex-set-item input[type=text]{width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;margin-bottom:6px}
+    .ex-set-item input[type=number]{width:64px;padding:6px;border:1px solid #ddd;border-radius:8px;font-size:.85rem}
+    .ex-set-nums{display:flex;gap:12px;align-items:center;font-size:.82rem;color:#555;flex-wrap:wrap}
+    .ex-set-q{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:8px;font-size:.78rem;color:#555}
+    .ex-set-q label{display:flex;align-items:center;gap:4px}
+    .ex-set-q input{width:44px!important;padding:4px!important}
     /* 公開デッキ */
     .pub-deck-card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:16px;margin-bottom:8px}
     .pub-deck-title{font-size:1rem;font-weight:600;margin-bottom:4px}
@@ -234,9 +253,13 @@
     <div class="home-tabs">
       <button class="home-tab active" data-tab="my" id="tab-my">マイデッキ</button>
       <button class="home-tab" data-tab="public" id="tab-public">公開デッキ</button>
+      <button class="home-tab" data-tab="exam" id="tab-exam">過去問</button>
     </div>
     <div class="home-section active" id="section-my">
       <div class="deck-list" id="deck-list"></div>
+    </div>
+    <div class="home-section" id="section-exam">
+      <div id="exam-area"></div>
     </div>
     <div class="home-section" id="section-public">
       <div id="public-deck-list"></div>
@@ -413,6 +436,7 @@
     </div>
     <div class="modal-row modal-row-danger" id="reset-group-row">&#x1f504; リセット</div>
     <div id="reset-group-section" style="display:none;padding:4px 0">
+      <div class="modal-row" id="exam-settings-row" style="cursor:pointer">&#x1f4dd; 過去問チェック設定<span style="color:#aaa">&gt;</span></div>
       <div class="modal-row" id="recount-row">&#x1f522; カード件数を数え直す</div>
       <div class="modal-row modal-row-danger" id="reset-card-stats-row">カード統計をリセット</div>
       <div class="modal-row modal-row-danger" id="reset-stats-btn">学習統計をリセット</div>
@@ -447,6 +471,13 @@
       </div>
     </div>
     <button class="modal-close" id="manage-settings-close">閉じる</button>
+  </div></div>
+  <div class="modal-overlay" id="exam-settings-modal"><div class="modal">
+    <h3>&#x1f4dd; 過去問チェック設定</h3>
+    <div style="font-size:.78rem;color:#888;margin-bottom:10px">試験を最大3つまで設定できます（名前・問題数・肢の数）。空欄の項目は使いません。</div>
+    <div id="exam-settings-body"></div>
+    <button class="btn btn-blue" id="exam-settings-save" style="width:100%;margin-top:6px">保存</button>
+    <button class="modal-close" id="exam-settings-close">閉じる</button>
   </div></div>
   <div class="toast" id="toast"></div>
 
@@ -991,7 +1022,7 @@ document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 document.getElementById('header-user').addEventListener('click',async()=>{if(!confirm('ログアウトしますか？'))return;if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home');backgroundTasks()}
+async function initApp(){showLoading();await loadData();loadPastExam();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home');backgroundTasks()}
 async function backgroundTasks(){
   try{
     if(!isGuest){
@@ -1041,9 +1072,10 @@ function setHomeTab(tab){
   activeHomeTab=tab;
   document.querySelectorAll('.home-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   document.querySelectorAll('.home-section').forEach(s=>s.classList.remove('active'));
-  const secId=tab==='my'?'section-my':'section-public';
+  const secId='section-'+tab;
   document.getElementById(secId).classList.add('active');
   if(tab==='public')loadPublicDecks();
+  if(tab==='exam')renderExam();
 }
 document.querySelectorAll('.home-tab').forEach(t=>t.addEventListener('click',()=>setHomeTab(t.dataset.tab)));
 
@@ -1685,6 +1717,107 @@ document.getElementById('recount-row').addEventListener('click',async()=>{showLo
 document.getElementById('reset-card-stats-row').addEventListener('click',async()=>{if(!confirm('全カードの◯×カウントとレーティングを初期状態にリセットしますか？'))return;if(isGuest){for(const c of cards){c.incorrectCount=0;c.correctCount=0;c.lastRating=null}LS.save('fc_cards',cards)}else{const snap=await cardsCol().get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{incorrectCount:0,correctCount:0,lastRating:null}));await batch.commit()}}for(const dk of decks){dk.ratings={incorrect:0,correct:0,understood:0}}await saveDecks();showToast('カード統計をリセットしました');document.getElementById('settings-modal').classList.remove('active')});
 document.getElementById('manage-settings-close').addEventListener('click',()=>document.getElementById('manage-settings-modal').classList.remove('active'));
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
+
+/* ========== 過去問チェック ========== */
+const EXAM_MAX_ITEMS=3;
+let pastExam={items:[]};
+let examSel=0;
+let examSaveTimer=null;
+function loadPastExam(){
+  let d=isGuest?LS.load('fc_pastexam',null):(typeof userDocData!=='undefined'&&userDocData?userDocData.pastExam:null);
+  pastExam=(d&&Array.isArray(d.items))?d:{items:[]};
+  examSel=LS.load('fc_exam_sel',0);
+}
+async function savePastExam(){
+  if(isGuest){LS.save('fc_pastexam',pastExam);return}
+  try{await userDoc().update({pastExam})}catch(e){console.error(e);showToast('保存に失敗しました')}
+}
+function examChoices(it,q){return (it.choices&&it.choices[q])||it.defChoices||5}
+function examActiveItems(){return pastExam.items.map((it,i)=>({it,i})).filter(x=>x.it&&x.it.name&&x.it.count>0)}
+function examCounts(it){
+  let qb=0,qg=0,cb=0,cg=0,ct=0;
+  for(let q=1;q<=it.count;q++){
+    const qs=(it.marks||{})[q]||0;if(qs===1)qb++;if(qs===2)qg++;
+    const n=examChoices(it,q);ct+=n;
+    for(let c=1;c<=n;c++){const s=(it.marks||{})[q+'-'+c]||0;if(s===1)cb++;if(s===2)cg++}
+  }
+  return {qb,qg,cb,cg,ct};
+}
+function renderExamSummary(it){
+  const c=examCounts(it);
+  document.getElementById('exam-summary').innerHTML=`問題 &#x1f7e6;${c.qb} / ${it.count}　<span style="color:#9e9e9e">&#x25a0;</span>${c.qg}<br>肢 &#x1f7e6;${c.cb} / ${c.ct}　<span style="color:#9e9e9e">&#x25a0;</span>${c.cg}`;
+}
+function renderExam(){
+  const area=document.getElementById('exam-area');
+  const act=examActiveItems();
+  if(!act.length){area.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>過去問チェックの設定がありません</p><p style="font-size:.8rem;color:#aaa;margin-top:6px">ホーム右上の設定 →「過去問チェック設定」で、試験名と問題数を設定してください</p></div>';return}
+  if(!act.some(x=>x.i===examSel))examSel=act[0].i;
+  const it=pastExam.items[examSel];
+  if(!it.marks)it.marks={};
+  let html='<div class="ex-sel">'+act.map(x=>`<button data-i="${x.i}" class="${x.i===examSel?'active':''}">${esc(x.it.name)}</button>`).join('')+'</div>';
+  html+='<div class="ex-summary" id="exam-summary"></div><div id="exam-grid">';
+  for(let q=1;q<=it.count;q++){
+    const n=examChoices(it,q);
+    html+=`<div class="ex-row"><button class="ex-q s${it.marks[q]||0}" data-k="${q}">問${q}</button>`;
+    for(let c=1;c<=n;c++)html+=`<button class="ex-c s${it.marks[q+'-'+c]||0}" data-k="${q}-${c}">${c}</button>`;
+    html+='</div>';
+  }
+  html+='</div>';
+  area.innerHTML=html;
+  renderExamSummary(it);
+  area.querySelectorAll('.ex-sel button').forEach(b=>b.addEventListener('click',()=>{examSel=parseInt(b.dataset.i);LS.save('fc_exam_sel',examSel);renderExam()}));
+  document.getElementById('exam-grid').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-k]');if(!b)return;
+    const k=b.dataset.k;const cur=it.marks[k]||0;const nx=(cur+1)%3;
+    if(nx===0)delete it.marks[k];else it.marks[k]=nx;
+    b.className=b.className.replace(/\bs[012]\b/,'s'+nx);
+    renderExamSummary(it);
+    if(examSaveTimer)clearTimeout(examSaveTimer);
+    examSaveTimer=setTimeout(savePastExam,600);
+  });
+}
+function renderExamSettings(){
+  const body=document.getElementById('exam-settings-body');
+  let html='';
+  for(let i=0;i<EXAM_MAX_ITEMS;i++){
+    const it=pastExam.items[i]||{};
+    html+=`<div class="ex-set-item" data-i="${i}"><div style="font-size:.8rem;color:#888;margin-bottom:4px">項目${i+1}</div>
+      <input type="text" class="ex-name" placeholder="試験名（例: 行政書士）" value="${esc(it.name||'')}">
+      <div class="ex-set-nums"><span>問題数 <input type="number" class="ex-count" min="0" max="200" value="${it.count||''}"></span><span>肢の数 <input type="number" class="ex-def" min="1" max="10" value="${it.defChoices||5}"></span><button class="btn btn-outline btn-sm ex-detail-btn" type="button">問ごとの肢数</button></div>
+      <div class="ex-set-q" style="display:none"></div></div>`;
+  }
+  body.innerHTML=html;
+  body.querySelectorAll('.ex-set-item').forEach(box=>{
+    const i=parseInt(box.dataset.i);
+    box.querySelector('.ex-detail-btn').addEventListener('click',()=>{
+      const wrap=box.querySelector('.ex-set-q');
+      if(wrap.style.display!=='none'){wrap.style.display='none';return}
+      const cnt=parseInt(box.querySelector('.ex-count').value)||0,def=parseInt(box.querySelector('.ex-def').value)||5;
+      const it=pastExam.items[i]||{};
+      let h='';for(let q=1;q<=cnt;q++)h+=`<label>問${q}<input type="number" min="1" max="10" data-q="${q}" value="${(it.choices&&it.choices[q])||def}"></label>`;
+      wrap.innerHTML=h||'<span style="color:#aaa">先に問題数を入力してください</span>';wrap.style.display='flex';
+    });
+  });
+}
+function saveExamSettings(){
+  const items=[];
+  document.querySelectorAll('#exam-settings-body .ex-set-item').forEach(box=>{
+    const i=parseInt(box.dataset.i);const old=pastExam.items[i]||{};
+    const name=box.querySelector('.ex-name').value.trim();
+    const count=Math.max(0,Math.min(200,parseInt(box.querySelector('.ex-count').value)||0));
+    const def=Math.max(1,Math.min(10,parseInt(box.querySelector('.ex-def').value)||5));
+    const choices={...(old.choices||{})};
+    const wrap=box.querySelector('.ex-set-q');
+    if(wrap.style.display!=='none'){wrap.querySelectorAll('input[data-q]').forEach(inp=>{const n=Math.max(1,Math.min(10,parseInt(inp.value)||def));if(n!==def)choices[inp.dataset.q]=n;else delete choices[inp.dataset.q]})}
+    if(!name||!count){items.push(null);return}
+    items.push({name,count,defChoices:def,choices,marks:old.marks||{}});
+  });
+  pastExam.items=items.map(x=>x||{});
+  return savePastExam();
+}
+document.getElementById('exam-settings-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');renderExamSettings();document.getElementById('exam-settings-modal').classList.add('active')});
+document.getElementById('exam-settings-close').addEventListener('click',()=>document.getElementById('exam-settings-modal').classList.remove('active'));
+document.getElementById('exam-settings-save').addEventListener('click',async()=>{await saveExamSettings();document.getElementById('exam-settings-modal').classList.remove('active');showToast('保存しました');renderExam()});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}

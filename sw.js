@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ultra-anki-v23';
+const CACHE_NAME = 'ultra-anki-v24';
 const ASSETS = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/ogp.png'];
 
 self.addEventListener('install', e => {
