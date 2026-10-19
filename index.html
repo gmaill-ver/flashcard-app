@@ -1727,6 +1727,12 @@ function loadPastExam(){
   let d=isGuest?LS.load('fc_pastexam',null):(typeof userDocData!=='undefined'&&userDocData?userDocData.pastExam:null);
   pastExam=(d&&Array.isArray(d.items))?d:{items:[]};
   examSel=LS.load('fc_exam_sel',0);
+  // 初回のみ: 行政書士 令和7年度の構成（問1-40・47-60=5肢択一、問41-43=多肢選択式(ア〜エ)、問44-46=記述式）を自動設定
+  if(!pastExam.seeded&&!pastExam.items.some(x=>x&&x.name)){
+    pastExam.items=[{name:'行政書士 R7',count:60,defChoices:5,choices:{41:4,42:4,43:4,44:1,45:1,46:1},marks:{}}];
+    pastExam.seeded=true;
+    savePastExam();
+  }
 }
 async function savePastExam(){
   if(isGuest){LS.save('fc_pastexam',pastExam);return}
