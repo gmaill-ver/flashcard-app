@@ -238,6 +238,18 @@ async function saveStats() {
   }
 }
 
+/* サブデッキ/カテゴリの件数メタを増減（delta: +1 / -1） */
+function adjustSubCounts(dk, sd, cat, delta) {
+  if (!dk || !sd) return;
+  if (!dk.subdeckCounts) dk.subdeckCounts = {};
+  dk.subdeckCounts[sd] = Math.max(0, (dk.subdeckCounts[sd] || 0) + delta);
+  if (cat) {
+    if (!dk.categoryCounts) dk.categoryCounts = {};
+    if (!dk.categoryCounts[sd]) dk.categoryCounts[sd] = {};
+    dk.categoryCounts[sd][cat] = Math.max(0, (dk.categoryCounts[sd][cat] || 0) + delta);
+  }
+}
+
 /* ========== カード操作 ========== */
 async function addCard(c, skipMeta) {
   if (isGuest) {
@@ -259,6 +271,7 @@ async function addCard(c, skipMeta) {
     const dk = getDeck(c.deck);
     if (dk) {
       dk.cardCount = (dk.cardCount || 0) + 1;
+      adjustSubCounts(dk, c.subdeck, c.category, 1);
       await saveDecks();
     }
   }
@@ -268,7 +281,18 @@ async function updateCard(id, data) {
   const i = cards.findIndex(c => c.id === id);
   if (i === -1) return;
 
+  const before = cards[i];
   cards[i] = { ...cards[i], ...data };
+
+  if ('subdeck' in data || 'category' in data) {
+    const after = cards[i];
+    if ((before.subdeck || '') !== (after.subdeck || '') || (before.category || '') !== (after.category || '')) {
+      const dk = getDeck(after.deck);
+      adjustSubCounts(dk, before.subdeck, before.category, -1);
+      adjustSubCounts(dk, after.subdeck, after.category, 1);
+      saveDecks();
+    }
+  }
 
   if (isGuest) {
     LS.save('fc_cards', cards);
@@ -300,6 +324,7 @@ async function removeCard(id) {
     const dk = getDeck(old.deck);
     if (dk) {
       dk.cardCount = Math.max(0, (dk.cardCount || 0) - 1);
+      adjustSubCounts(dk, old.subdeck, old.category, -1);
       if (old.lastRating && dk.ratings) {
         dk.ratings[old.lastRating] = Math.max(0, (dk.ratings[old.lastRating] || 0) - 1);
       }

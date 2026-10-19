@@ -468,6 +468,7 @@
       <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f3f7; カテゴリ</div>
       <select id="category-subdeck-sel" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:.85rem;margin-bottom:8px;background:#fff"><option value="">サブデッキを選択...</option></select>
       <div class="subdeck-chips" id="category-chips"></div>
+      <div class="add-deck-row" id="category-add-row" style="display:none"><input type="text" id="new-category-input" placeholder="カテゴリ名"><button class="btn btn-blue btn-sm" id="add-category-btn">追加</button></div>
     </div>
     <div id="publish-section">
       <div style="font-size:.9rem;color:#555;margin-bottom:10px;font-weight:600">&#x1f4e4; 公開設定</div>
@@ -1549,11 +1550,11 @@ function renderManageSubdecks(){
   const deck=getDeck(currentDeck);if(!deck)return;
   const chips=document.getElementById('subdeck-chips');
   chips.innerHTML=deck.subdecks.map(sd=>`<div class="subdeck-chip">${esc(sd)}<span class="subdeck-chip-rename" data-sd="${esc(sd)}" title="名称変更">&#x270f;</span></div>`).join('');
-  chips.querySelectorAll('.subdeck-chip-rename').forEach(el=>{el.addEventListener('click',async()=>{const oldSd=el.dataset.sd;const newSd=prompt('新しいサブデッキ名:',oldSd);if(!newSd||newSd.trim()===''||newSd.trim()===oldSd)return;const nn=newSd.trim();if(deck.subdecks.includes(nn)){showToast('同じ名前のサブデッキがあります');return}const idx=deck.subdecks.indexOf(oldSd);if(idx!==-1)deck.subdecks[idx]=nn;if(isGuest){for(const c of cards){if(c.deck===currentDeck&&c.subdeck===oldSd)c.subdeck=nn}LS.save('fc_cards',cards)}else{const snap=await cardsCol().where('deck','==',currentDeck).where('subdeck','==',oldSd).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{subdeck:nn}));await batch.commit()}for(const c of cards){if(c.deck===currentDeck&&c.subdeck===oldSd)c.subdeck=nn}}await saveDecks();renderManageSubdecks();renderManageList();showToast(`「${nn}」に変更しました`)})});
+  chips.querySelectorAll('.subdeck-chip-rename').forEach(el=>{el.addEventListener('click',async()=>{const oldSd=el.dataset.sd;const newSd=prompt('新しいサブデッキ名:',oldSd);if(!newSd||newSd.trim()===''||newSd.trim()===oldSd)return;const nn=newSd.trim();if(deck.subdecks.includes(nn)){showToast('同じ名前のサブデッキがあります');return}const idx=deck.subdecks.indexOf(oldSd);if(idx!==-1)deck.subdecks[idx]=nn;if(isGuest){for(const c of cards){if(c.deck===currentDeck&&c.subdeck===oldSd)c.subdeck=nn}LS.save('fc_cards',cards)}else{const snap=await cardsCol().where('deck','==',currentDeck).where('subdeck','==',oldSd).get();const docs=snap.docs;for(let i=0;i<docs.length;i+=400){const batch=db.batch();docs.slice(i,i+400).forEach(d=>batch.update(d.ref,{subdeck:nn}));await batch.commit()}for(const c of cards){if(c.deck===currentDeck&&c.subdeck===oldSd)c.subdeck=nn}}for(const k of ['subdeckCounts','categoryMap','categoryCounts']){if(deck[k]&&oldSd in deck[k]){deck[k][nn]=deck[k][oldSd];delete deck[k][oldSd]}}await saveDecks();renderManageSubdecks();renderManageCategorySection();renderManageList();showToast(`「${nn}」に変更しました`)})});
   const delRow=document.getElementById('subdeck-delete-row');
   const delSel=document.getElementById('subdeck-delete-sel');
   if(deck.subdecks.length){delRow.style.display='flex';delSel.innerHTML='<option value="">削除するサブデッキを選択...</option>'+deck.subdecks.map(sd=>`<option value="${esc(sd)}">${esc(sd)}</option>`).join('')}else{delRow.style.display='none'}
-  document.getElementById('subdeck-delete-btn').onclick=async()=>{const sd=delSel.value;if(!sd)return;if(!confirm(`サブデッキ「${sd}」を削除？\nカードのサブデッキ指定は解除されます`))return;for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd){c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({subdeck:''})}}if(isGuest)LS.save('fc_cards',cards);deck.subdecks=deck.subdecks.filter(s=>s!==sd);await saveDecks();renderManageSubdecks();renderManageList()};
+  document.getElementById('subdeck-delete-btn').onclick=async()=>{const sd=delSel.value;if(!sd)return;if(!confirm(`サブデッキ「${sd}」を削除？\nカードのサブデッキ指定は解除されます`))return;for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd){c.subdeck='';if(!isGuest)await cardsCol().doc(c.id).update({subdeck:''})}}if(isGuest)LS.save('fc_cards',cards);deck.subdecks=deck.subdecks.filter(s=>s!==sd);for(const k of ['subdeckCounts','categoryMap','categoryCounts']){if(deck[k])delete deck[k][sd]}await saveDecks();renderManageSubdecks();renderManageCategorySection();renderManageList()};
   const sel=document.getElementById('card-subdeck-select');
   sel.innerHTML='<option value="">なし（直下）</option>'+deck.subdecks.map(sd=>`<option value="${esc(sd)}">${esc(sd)}</option>`).join('');
   document.getElementById('subdeck-select-group').style.display=deck.subdecks.length?'block':'none';
@@ -1563,19 +1564,27 @@ function renderManageSubdecks(){
 function renderManageCategorySection(){
   const dk=getDeck(currentDeck);const sec=document.getElementById('category-rename-section');const sel=document.getElementById('category-subdeck-sel');
   if(!dk||!dk.subdecks?.length){sec.style.display='none';return}
-  const sdsWithCats=dk.subdecks.filter(sd=>(dk.categoryMap?.[sd]||[]).length>0);
-  sec.style.display=sdsWithCats.length?'block':'none';if(!sdsWithCats.length)return;
-  const prev=sel.value;
-  sel.innerHTML='<option value="">サブデッキを選択...</option>'+sdsWithCats.map(sd=>`<option value="${esc(sd)}"${prev===sd?' selected':''}>${esc(sd)}</option>`).join('');
+  sec.style.display='block';
+  const prev=dk.subdecks.includes(sel.value)?sel.value:'';
+  sel.innerHTML='<option value="">サブデッキを選択...</option>'+dk.subdecks.map(sd=>`<option value="${esc(sd)}"${prev===sd?' selected':''}>${esc(sd)}</option>`).join('');
   sel.onchange=()=>renderManageCategoryChips(sel.value);
   renderManageCategoryChips(sel.value);
 }
 function renderManageCategoryChips(subdeck){
   const dk=getDeck(currentDeck);const el=document.getElementById('category-chips');
+  document.getElementById('category-add-row').style.display=(dk&&subdeck)?'flex':'none';
   if(!dk||!subdeck){el.innerHTML='';return}
   const cats=(dk.categoryMap||{})[subdeck]||[];
   if(!cats.length){el.innerHTML='<div style="font-size:.82rem;color:#aaa;padding:4px 0">カテゴリなし</div>';return}
-  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span></div>`).join('');
+  el.innerHTML=cats.map(cat=>`<div class="subdeck-chip">${esc(cat)}<span class="cat-chip-rename" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="名称変更">&#x270f;</span><span class="cat-chip-delete" data-sd="${esc(subdeck)}" data-cat="${esc(cat)}" title="削除" style="margin-left:6px">&#x1f5d1;</span></div>`).join('');
+  el.querySelectorAll('.cat-chip-delete').forEach(btn=>{btn.addEventListener('click',async()=>{
+    const cat=btn.dataset.cat,sd=btn.dataset.sd;const dk=getDeck(currentDeck);
+    if(!confirm(`カテゴリ「${cat}」を削除？\nカードのカテゴリ指定は解除されます`))return;
+    for(const c of cards){if(c.deck===currentDeck&&c.subdeck===sd&&c.category===cat)c.category=''}
+    if(isGuest){LS.save('fc_cards',cards)}else{try{const snap=await cardsCol().where('deck','==',currentDeck).where('subdeck','==',sd).get();const docs=snap.docs.filter(d=>d.data().category===cat);for(let i=0;i<docs.length;i+=400){const b=db.batch();docs.slice(i,i+400).forEach(d=>b.update(d.ref,{category:''}));await b.commit()}}catch(e){console.error(e);showToast('削除に失敗しました');return}}
+    dk.categoryMap[sd]=(dk.categoryMap[sd]||[]).filter(x=>x!==cat);if(dk.categoryCounts?.[sd])delete dk.categoryCounts[sd][cat];
+    await saveDecks();renderManageCategoryChips(sd);document.getElementById('card-subdeck-select').onchange();renderManageList();renderDeckList();showToast('削除しました');
+  })});
   el.querySelectorAll('.cat-chip-rename').forEach(btn=>{btn.addEventListener('click',async()=>{
     const oldCat=btn.dataset.cat,sd=btn.dataset.sd;
     const newCat=prompt('新しいカテゴリ名:',oldCat);
@@ -1588,7 +1597,9 @@ function renderManageCategoryChips(subdeck){
     await saveDecks();renderManageCategoryChips(sd);renderDeckList();showToast(`「${nn}」に変更しました`);
   })});
 }
-document.getElementById('add-subdeck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-subdeck-input'),n=i.value.trim(),dk=getDeck(currentDeck);if(n&&dk&&!dk.subdecks.includes(n)){dk.subdecks.push(n);await saveDecks();i.value='';renderManageSubdecks();renderManageList();showToast(`サブデッキ「${n}」を追加`)}});
+document.getElementById('add-category-btn').addEventListener('click',async()=>{const sd=document.getElementById('category-subdeck-sel').value,i=document.getElementById('new-category-input'),n=i.value.trim(),dk=getDeck(currentDeck);if(!sd){showToast('サブデッキを選択してください');return}if(!n||!dk)return;if(!dk.categoryMap)dk.categoryMap={};if(!dk.categoryMap[sd])dk.categoryMap[sd]=[];if(dk.categoryMap[sd].includes(n)){showToast('同じ名前のカテゴリがあります');return}dk.categoryMap[sd].push(n);if(!dk.categoryCounts)dk.categoryCounts={};if(!dk.categoryCounts[sd])dk.categoryCounts[sd]={};dk.categoryCounts[sd][n]=0;await saveDecks();i.value='';renderManageCategoryChips(sd);document.getElementById('card-subdeck-select').onchange();renderDeckList();showToast(`カテゴリ「${n}」を追加`)});
+document.getElementById('new-category-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-category-btn').click()}});
+document.getElementById('add-subdeck-btn').addEventListener('click',async()=>{const i=document.getElementById('new-subdeck-input'),n=i.value.trim(),dk=getDeck(currentDeck);if(n&&dk&&!dk.subdecks.includes(n)){dk.subdecks.push(n);await saveDecks();i.value='';renderManageSubdecks();renderManageCategorySection();renderManageList();showToast(`サブデッキ「${n}」を追加`)}});
 document.getElementById('new-subdeck-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();document.getElementById('add-subdeck-btn').click()}});
 document.getElementById('manage-search').addEventListener('input',e=>{manageSearch=e.target.value.trim().toLowerCase();managePage=0;renderManageList()});
 
