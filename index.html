@@ -100,9 +100,11 @@
 
 
     /* 過去問チェック */
-    .ex-sel{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
-    .ex-sel button{flex:1;min-width:0;padding:10px 8px;border:1px solid #ddd;border-radius:10px;background:#fff;font-size:.85rem;color:#555;cursor:pointer}
-    .ex-sel button.active{background:#2196f3;border-color:#2196f3;color:#fff}
+    .ex-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .ex-title{flex:1;font-size:1rem;font-weight:700;color:#222}
+    .ex-top-sel{flex:1;padding:8px 10px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:.9rem;color:#222;font-weight:600}
+    .ex-year-row{display:flex;gap:6px;margin-bottom:6px}
+    .ex-year-row input{flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:.9rem}
     .ex-summary{font-size:.8rem;color:#666;margin-bottom:10px;line-height:1.7}
     .ex-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f0f0f0}
     .ex-q{flex:0 0 52px}
@@ -1719,20 +1721,31 @@ document.getElementById('manage-settings-close').addEventListener('click',()=>do
 document.getElementById('manage-settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 
 /* ========== 過去問チェック ========== */
+/* 大項目=資格(最大3): {name,count,defChoices,choices,years:[{label,marks}]} / 中項目=年度ごとのチェック */
 const EXAM_MAX_ITEMS=3;
 let pastExam={items:[]};
 let examSel=0;
+let examYearSel={};
 let examSaveTimer=null;
+function migrateExamItem(it){
+  if(!it||!it.name)return {};
+  if(Array.isArray(it.years))return it;
+  const m=it.name.match(/^(.*?)\s+(R\d+|H\d+|令和\d+年度?|平成\d+年度?|\d{4}年?度?)$/);
+  const name=m?m[1]:it.name,label=m?m[2]:'標準';
+  return {name,count:it.count,defChoices:it.defChoices,choices:it.choices||{},years:[{label,marks:it.marks||{}}]};
+}
 function loadPastExam(){
   let d=isGuest?LS.load('fc_pastexam',null):(typeof userDocData!=='undefined'&&userDocData?userDocData.pastExam:null);
   pastExam=(d&&Array.isArray(d.items))?d:{items:[]};
+  pastExam.items=pastExam.items.map(migrateExamItem);
   examSel=LS.load('fc_exam_sel',0);
+  examYearSel=LS.load('fc_exam_year',{});
   // 初回のみ: 行政書士 令和7年度の構成（問1-40・47-60=5肢択一、問41-43=多肢選択式(ア〜エ)、問44-46=記述式）を自動設定
   if(!pastExam.seeded&&!pastExam.items.some(x=>x&&x.name)){
-    pastExam.items=[{name:'行政書士 R7',count:60,defChoices:5,choices:{41:4,42:4,43:4,44:1,45:1,46:1},marks:{}}];
+    pastExam.items=[{name:'行政書士',count:60,defChoices:5,choices:{41:4,42:4,43:4,44:1,45:1,46:1},years:[{label:'R7',marks:{}}]}];
     pastExam.seeded=true;
-    savePastExam();
   }
+  savePastExam();
 }
 async function savePastExam(){
   if(isGuest){LS.save('fc_pastexam',pastExam);return}
@@ -1740,18 +1753,18 @@ async function savePastExam(){
 }
 function examChoices(it,q){return (it.choices&&it.choices[q])||it.defChoices||5}
 function examActiveItems(){return pastExam.items.map((it,i)=>({it,i})).filter(x=>x.it&&x.it.name&&x.it.count>0)}
-function examCounts(it){
+function examCounts(it,marks){
   let qb=0,qg=0,cb=0,cg=0,ct=0;
   for(let q=1;q<=it.count;q++){
-    const qs=(it.marks||{})[q]||0;if(qs===1)qb++;if(qs===2)qg++;
+    const qs=marks[q]||0;if(qs===1)qb++;if(qs===2)qg++;
     const n=examChoices(it,q);ct+=n;
-    for(let c=1;c<=n;c++){const s=(it.marks||{})[q+'-'+c]||0;if(s===1)cb++;if(s===2)cg++}
+    for(let c=1;c<=n;c++){const s=marks[q+'-'+c]||0;if(s===1)cb++;if(s===2)cg++}
   }
   return {qb,qg,cb,cg,ct};
 }
-function renderExamSummary(it){
-  const c=examCounts(it);
-  document.getElementById('exam-summary').innerHTML=`問題 &#x1f7e6;${c.qb} / ${it.count}　<span style="color:#9e9e9e">&#x25a0;</span>${c.qg}<br>肢 &#x1f7e6;${c.cb} / ${c.ct}　<span style="color:#9e9e9e">&#x25a0;</span>${c.cg}`;
+function renderExamSummary(it,marks){
+  const c=examCounts(it,marks);
+  document.getElementById('exam-summary').innerHTML=`問題 <span style="color:#2196f3">&#x25a0;</span>${c.qb} / ${it.count}　<span style="color:#9e9e9e">&#x25a0;</span>${c.qg}<br>肢 <span style="color:#2196f3">&#x25a0;</span>${c.cb} / ${c.ct}　<span style="color:#9e9e9e">&#x25a0;</span>${c.cg}`;
 }
 function renderExam(){
   const area=document.getElementById('exam-area');
@@ -1759,38 +1772,51 @@ function renderExam(){
   if(!act.length){area.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>過去問チェックの設定がありません</p><p style="font-size:.8rem;color:#aaa;margin-top:6px">ホーム右上の設定 →「過去問チェック設定」で、試験名と問題数を設定してください</p></div>';return}
   if(!act.some(x=>x.i===examSel))examSel=act[0].i;
   const it=pastExam.items[examSel];
-  if(!it.marks)it.marks={};
-  let html='<div class="ex-sel">'+act.map(x=>`<button data-i="${x.i}" class="${x.i===examSel?'active':''}">${esc(x.it.name)}</button>`).join('')+'</div>';
+  if(!it.years||!it.years.length)it.years=[{label:'標準',marks:{}}];
+  let yi=examYearSel[examSel];if(!(yi>=0&&yi<it.years.length))yi=0;
+  const yr=it.years[yi];if(!yr.marks)yr.marks={};
+  const marks=yr.marks;
+  const titleHtml=act.length>1?`<select id="exam-item-sel" class="ex-top-sel">${act.map(x=>`<option value="${x.i}"${x.i===examSel?' selected':''}>${esc(x.it.name)}</option>`).join('')}</select>`:`<span class="ex-title">${esc(it.name)}</span>`;
+  let html=`<div class="ex-head">${titleHtml}<select id="exam-year-sel" class="ex-top-sel">${it.years.map((y,i)=>`<option value="${i}"${i===yi?' selected':''}>${esc(y.label||'標準')}</option>`).join('')}</select></div>`;
   html+='<div class="ex-summary" id="exam-summary"></div><div id="exam-grid">';
   for(let q=1;q<=it.count;q++){
     const n=examChoices(it,q);
-    html+=`<div class="ex-row"><button class="ex-q s${it.marks[q]||0}" data-k="${q}">問${q}</button>`;
-    for(let c=1;c<=n;c++)html+=`<button class="ex-c s${it.marks[q+'-'+c]||0}" data-k="${q}-${c}">${c}</button>`;
+    html+=`<div class="ex-row"><button class="ex-q s${marks[q]||0}" data-k="${q}">問${q}</button>`;
+    for(let c=1;c<=n;c++)html+=`<button class="ex-c s${marks[q+'-'+c]||0}" data-k="${q}-${c}">${c}</button>`;
     html+='</div>';
   }
   html+='</div>';
   area.innerHTML=html;
-  renderExamSummary(it);
-  area.querySelectorAll('.ex-sel button').forEach(b=>b.addEventListener('click',()=>{examSel=parseInt(b.dataset.i);LS.save('fc_exam_sel',examSel);renderExam()}));
+  renderExamSummary(it,marks);
+  const is=document.getElementById('exam-item-sel');
+  if(is)is.addEventListener('change',()=>{examSel=parseInt(is.value);LS.save('fc_exam_sel',examSel);renderExam()});
+  document.getElementById('exam-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderExam()});
   document.getElementById('exam-grid').addEventListener('click',e=>{
     const b=e.target.closest('button[data-k]');if(!b)return;
-    const k=b.dataset.k;const cur=it.marks[k]||0;const nx=(cur+1)%3;
-    if(nx===0)delete it.marks[k];else it.marks[k]=nx;
+    const k=b.dataset.k;const cur=marks[k]||0;const nx=(cur+1)%3;
+    if(nx===0)delete marks[k];else marks[k]=nx;
     b.className=b.className.replace(/\bs[012]\b/,'s'+nx);
-    renderExamSummary(it);
+    renderExamSummary(it,marks);
     if(examSaveTimer)clearTimeout(examSaveTimer);
     examSaveTimer=setTimeout(savePastExam,600);
   });
+}
+function examYearRowHtml(label,idx){
+  return `<div class="ex-year-row" data-idx="${idx}"><input type="text" class="ex-year-name" placeholder="年度（例: R7）" value="${esc(label)}"><button class="btn btn-sm ex-year-del" type="button" style="background:#ff5252;color:#fff">削除</button></div>`;
 }
 function renderExamSettings(){
   const body=document.getElementById('exam-settings-body');
   let html='';
   for(let i=0;i<EXAM_MAX_ITEMS;i++){
     const it=pastExam.items[i]||{};
-    html+=`<div class="ex-set-item" data-i="${i}"><div style="font-size:.8rem;color:#888;margin-bottom:4px">項目${i+1}</div>
-      <input type="text" class="ex-name" placeholder="試験名（例: 行政書士）" value="${esc(it.name||'')}">
+    const years=it.years||[];
+    html+=`<div class="ex-set-item" data-i="${i}"><div style="font-size:.8rem;color:#888;margin-bottom:4px">資格${i+1}</div>
+      <input type="text" class="ex-name" placeholder="資格名（例: 行政書士）" value="${esc(it.name||'')}">
       <div class="ex-set-nums"><span>問題数 <input type="number" class="ex-count" min="0" max="200" value="${it.count||''}"></span><span>肢の数 <input type="number" class="ex-def" min="1" max="10" value="${it.defChoices||5}"></span><button class="btn btn-outline btn-sm ex-detail-btn" type="button">問ごとの肢数</button></div>
-      <div class="ex-set-q" style="display:none"></div></div>`;
+      <div class="ex-set-q" style="display:none"></div>
+      <div style="font-size:.8rem;color:#888;margin:10px 0 4px">年度</div>
+      <div class="ex-years">${years.map((y,k)=>examYearRowHtml(y.label,k)).join('')}</div>
+      <button class="btn btn-outline btn-sm ex-year-add" type="button">＋年度を追加</button></div>`;
   }
   body.innerHTML=html;
   body.querySelectorAll('.ex-set-item').forEach(box=>{
@@ -1803,6 +1829,9 @@ function renderExamSettings(){
       let h='';for(let q=1;q<=cnt;q++)h+=`<label>問${q}<input type="number" min="1" max="10" data-q="${q}" value="${(it.choices&&it.choices[q])||def}"></label>`;
       wrap.innerHTML=h||'<span style="color:#aaa">先に問題数を入力してください</span>';wrap.style.display='flex';
     });
+    const yearsEl=box.querySelector('.ex-years');
+    box.querySelector('.ex-year-add').addEventListener('click',()=>{yearsEl.insertAdjacentHTML('beforeend',examYearRowHtml('',-1))});
+    yearsEl.addEventListener('click',e=>{const d=e.target.closest('.ex-year-del');if(!d)return;const row=d.closest('.ex-year-row');if(parseInt(row.dataset.idx)>=0&&!confirm('この年度のチェックも削除されます。よろしいですか？'))return;row.remove()});
   });
 }
 function saveExamSettings(){
@@ -1815,10 +1844,18 @@ function saveExamSettings(){
     const choices={...(old.choices||{})};
     const wrap=box.querySelector('.ex-set-q');
     if(wrap.style.display!=='none'){wrap.querySelectorAll('input[data-q]').forEach(inp=>{const n=Math.max(1,Math.min(10,parseInt(inp.value)||def));if(n!==def)choices[inp.dataset.q]=n;else delete choices[inp.dataset.q]})}
-    if(!name||!count){items.push(null);return}
-    items.push({name,count,defChoices:def,choices,marks:old.marks||{}});
+    const years=[];
+    box.querySelectorAll('.ex-year-row').forEach(row=>{
+      const idx=parseInt(row.dataset.idx);const label=row.querySelector('.ex-year-name').value.trim();
+      if(!label)return;
+      const prev=idx>=0&&old.years?old.years[idx]:null;
+      years.push({label,marks:prev?(prev.marks||{}):{}});
+    });
+    if(!name||!count){items.push({});return}
+    if(!years.length)years.push({label:'標準',marks:{}});
+    items.push({name,count,defChoices:def,choices,years});
   });
-  pastExam.items=items.map(x=>x||{});
+  pastExam.items=items;
   return savePastExam();
 }
 document.getElementById('exam-settings-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');renderExamSettings();document.getElementById('exam-settings-modal').classList.add('active')});
