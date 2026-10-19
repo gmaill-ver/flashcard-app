@@ -1185,6 +1185,8 @@ function getStudyPool(){
   if(studySort==='shuffle'){pool=[...pool];for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}}else if(studySort){const[field,dir]=studySort.split('-');const key=field==='incorrect'?'incorrectCount':'correctCount';pool=[...pool].sort((a,b)=>dir==='desc'?(b[key]||0)-(a[key]||0):(a[key]||0)-(b[key]||0))}
   return pool;
 }
+let prefetching=false;
+async function maybePrefetchStudy(){if(isGuest||isPublicStudy||!cardHasMore||prefetching||studyIndex<studyCards.length-20)return;prefetching=true;try{const added=await loadMoreCards();const ids=new Set(added.map(c=>c.id));studyCards=studyCards.concat(getStudyPool().filter(c=>ids.has(c.id)));renderStudyFilters()}finally{prefetching=false}}
 async function startStudy(){renderStudyFilters();studyCards=getStudyPool();studyIndex=0;answerShown=false;renderStudyCard();loadGlobalMemo()}
 function renderStudyFilters(){
   const sortEl=document.getElementById('study-sort');
@@ -1452,14 +1454,14 @@ document.querySelectorAll('.anki-rating-btn').forEach(b=>{b.addEventListener('cl
   const upd={lastRating:r};if(r==='incorrect')upd.incorrectCount=(card.incorrectCount||0)+1;if(r==='correct')upd.correctCount=(card.correctCount||0)+1;
   await updateCard(card.id,upd);await saveStats();
   const dk=getDeck(currentDeck);if(dk&&dk.ratings){if(oldRating&&dk.ratings[oldRating]!=null)dk.ratings[oldRating]=Math.max(0,dk.ratings[oldRating]-1);dk.ratings[r]=(dk.ratings[r]||0)+1;saveDecks()}
-  studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;
+  studyIndex=(studyIndex+1)%studyCards.length;answerShown=false;maybePrefetchStudy();
   renderStudyFilters();
   if(isPlaying){if(playTimer)clearTimeout(playTimer);autoPlayNext()}else{renderStudyCard()}
 })});
 
 document.getElementById('study-sort').addEventListener('click',e=>{const sh=e.target.closest('#shuffle-btn');const ap=e.target.closest('#autoplay-btn');if(sh){studySort='shuffle';LS.save('fc_studySort',studySort);studyCards=getStudyPool();studyIndex=0;answerShown=false;const sel=document.getElementById('study-sort-select');if(sel)sel.value='shuffle';renderStudyCard();showToast('シャッフルしました')}if(ap){if(isPlaying){stopAutoPlay()}else{if(!studyCards.length)return;isPlaying=true;ap.innerHTML='&#x25a0;';ap.classList.add('active');autoPlayNext()}}});
 function stopAutoPlay(){isPlaying=false;if(playTimer)clearTimeout(playTimer);const ap=document.getElementById('autoplay-btn');if(ap){ap.innerHTML='&#x25b6;&#xfe0e;';ap.classList.remove('active')}}
-function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct',currentDeck);saveStats()}studyIndex=(studyIndex+1)%studyCards.length;autoPlayNext()},aD)},qD)}
+function autoPlayNext(){if(!isPlaying)return;const qD=parseInt(document.getElementById('cfg-q-delay').value)*1000,aD=parseInt(document.getElementById('cfg-a-delay').value)*1000;answerShown=false;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;answerShown=true;renderStudyCard();playTimer=setTimeout(()=>{if(!isPlaying)return;if(!isPublicStudy){stats.reviews++;stats.correct++;trackDaily('correct',currentDeck);saveStats()}studyIndex=(studyIndex+1)%studyCards.length;maybePrefetchStudy();autoPlayNext()},aD)},qD)}
 
 /* ========== Manage ========== */
 function renderPublishSection(){
