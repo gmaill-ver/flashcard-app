@@ -95,7 +95,7 @@
     .btn-sm{padding:6px 14px;font-size:.8rem}
     .btn-gray{background:#e0e0e0;color:#555}
     #note-modal{inset:56px 0 70px 0;padding:8px 0 0;align-items:flex-start;overflow:hidden;background:rgba(0,0,0,.4)}
-    #note-modal .modal{display:flex;flex-direction:column;max-height:100%;max-height:min(100%,calc(var(--vvh,100dvh) - 64px));padding:16px;animation:none;border-radius:12px}
+    #note-modal .modal{display:flex;flex-direction:column;max-height:100%;max-height:min(100%,calc(var(--vvh,100dvh) - 64px));padding:16px 16px 22px;animation:none;border-radius:12px 12px 0 0}
     #note-modal .modal.note-view{height:100%}
     #note-modal textarea{height:38vh;min-height:140px;resize:none}
     #note-view{flex:1;min-height:0;overflow-y:auto;font-size:.95rem;line-height:1.7;color:#444;white-space:pre-wrap;word-break:break-word;background:#f9f9f9;padding:12px;border-radius:6px}
@@ -2011,6 +2011,12 @@ function renderNotes(){
   document.getElementById('notes-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderNotes()});
   document.getElementById('notes-grid').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b)return;openNote(it,yr,b.dataset.k)});
 }
+function fitNoteModal(){
+  const f=document.querySelector('footer'),hd=document.getElementById('app-header');
+  const m=document.getElementById('note-modal');
+  m.style.bottom=Math.max(0,(f?f.offsetHeight:70)-8)+'px';
+  m.style.top=(hd&&hd.offsetHeight?hd.offsetHeight:56)+'px';
+}
 function setNoteMode(mode){
   const view=mode==='view';
   document.getElementById('note-box').classList.toggle('note-view',view);
@@ -2026,6 +2032,7 @@ async function openNote(it,yr,key){
   document.getElementById('note-title').textContent=`${it.name} ${yr.label||''}　問${q}${c?' 肢'+c:''}`;
   const ta=document.getElementById('note-text'),st=document.getElementById('note-status'),vw=document.getElementById('note-view');
   ta.value='';vw.textContent='';st.textContent='';
+  fitNoteModal();
   document.getElementById('note-modal').classList.add('active');
   if(yr.notes[key]){
     setNoteMode('view');vw.textContent='読み込み中...';
