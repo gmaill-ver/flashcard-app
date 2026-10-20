@@ -94,8 +94,8 @@
     .btn-blue{background:#2196f3;color:#fff}.btn-blue:hover{background:#1976d2}
     .btn-sm{padding:6px 14px;font-size:.8rem}
     .btn-gray{background:#e0e0e0;color:#555}
-    #note-modal{inset:56px 0 70px 0;padding:8px 0 0;align-items:flex-start;overflow:hidden;background:rgba(0,0,0,.4)}
-    #note-modal .modal{display:flex;flex-direction:column;max-height:100%;max-height:min(100%,calc(var(--vvh,100dvh) - 64px));padding:16px 16px 22px;animation:none;border-radius:12px 12px 0 0}
+    #note-modal{inset:56px 0 70px 0;padding:0;align-items:flex-start;overflow:hidden;background:rgba(0,0,0,.4)}
+    #note-modal .modal{display:flex;flex-direction:column;max-height:100%;max-height:min(100%,calc(var(--vvh,100dvh) - 64px));padding:22px 16px;animation:none;border-radius:0}
     #note-modal .modal.note-view{height:100%}
     #note-modal textarea{height:38vh;min-height:140px;resize:none}
     #note-view{flex:1;min-height:0;overflow-y:auto;font-size:.95rem;line-height:1.7;color:#444;white-space:pre-wrap;word-break:break-word;background:#f9f9f9;padding:12px;border-radius:6px}
@@ -2015,7 +2015,7 @@ function fitNoteModal(){
   const f=document.querySelector('footer'),hd=document.getElementById('app-header');
   const m=document.getElementById('note-modal');
   m.style.bottom=Math.max(0,(f?f.offsetHeight:70)-8)+'px';
-  m.style.top=(hd&&hd.offsetHeight?hd.offsetHeight:56)+'px';
+  m.style.top=Math.max(0,(hd&&hd.offsetHeight?hd.offsetHeight:56)-8)+'px';
 }
 function setNoteMode(mode){
   const view=mode==='view';
