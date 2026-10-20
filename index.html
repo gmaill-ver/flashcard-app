@@ -94,6 +94,9 @@
     .btn-blue{background:#2196f3;color:#fff}.btn-blue:hover{background:#1976d2}
     .btn-sm{padding:6px 14px;font-size:.8rem}
     .btn-gray{background:#e0e0e0;color:#555}
+    #note-modal{padding-top:12px;align-items:flex-start;overflow:hidden}
+    #note-modal .modal{max-height:calc(100dvh - 24px);max-height:calc(var(--vvh,100dvh) - 24px);padding:16px;animation:none}
+    #note-modal textarea{height:38vh;min-height:140px;resize:none}
     .btn-red{background:#ef5350;color:#fff}.btn-red:hover{background:#d32f2f}
     .btn-green{background:#4caf50;color:#fff}.btn-green:hover{background:#388e3c}
     .btn-outline{background:none;border:1px solid #ddd;color:#555}.btn-outline:hover{background:#f5f5f5}
@@ -495,10 +498,10 @@
   </div></div>
   <div class="modal-overlay" id="note-modal"><div class="modal">
     <h3 id="note-title">解説</h3>
-    <textarea id="note-text" rows="10" placeholder="自分なりの解説・まとめを入力..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"></textarea>
+    <textarea id="note-text" rows="8" placeholder="自分なりの解説・まとめを入力..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"></textarea>
     <div id="note-status" style="font-size:.78rem;color:#888;min-height:1.2em;margin:4px 0 8px"></div>
     <div style="display:flex;gap:8px">
-      <button class="btn btn-blue" id="note-save" style="flex:1">保存</button>
+      <button class="btn btn-gray" id="note-save" style="flex:1">保存</button>
       <button class="btn btn-outline" id="note-delete" style="flex:0 0 auto;background:none;border:1px solid #ddd">&#x1f5d1;&#xfe0f;</button>
     </div>
     <button class="modal-close" id="note-close">閉じる</button>
@@ -2020,7 +2023,8 @@ async function openNote(it,yr,key){
     catch(e){console.error(e);st.textContent='読み込みに失敗しました（通信を確認してください）';return}
     finally{ta.disabled=false}
   }
-  ta.focus();
+  if(!yr.notes[key]){try{ta.focus({preventScroll:true})}catch(e){ta.focus()}}
+  document.getElementById('note-modal').scrollTop=0;window.scrollTo(0,window.scrollY);
 }
 function closeNote(){document.getElementById('note-modal').classList.remove('active');noteCur=null}
 async function saveNote(del){
@@ -2045,6 +2049,7 @@ async function saveNote(del){
   }
   sb.disabled=false;db_.disabled=false;
 }
+if(window.visualViewport){const setVvh=()=>document.documentElement.style.setProperty('--vvh',window.visualViewport.height+'px');window.visualViewport.addEventListener('resize',setVvh);setVvh()}
 document.getElementById('note-save').addEventListener('click',()=>saveNote(false));
 document.getElementById('note-delete').addEventListener('click',()=>{if(confirm('この解説を削除しますか？'))saveNote(true)});
 document.getElementById('note-close').addEventListener('click',closeNote);
