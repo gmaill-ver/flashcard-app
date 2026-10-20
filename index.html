@@ -431,6 +431,11 @@
       <div id="tags-settings-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
     </div>
     <div class="modal-row" id="exam-settings-row" style="cursor:pointer">&#x1f4dd; 過去問チェック設定<span style="color:#aaa">&gt;</span></div>
+    <div id="exam-settings-section" style="display:none;padding:8px 0">
+      <div style="font-size:.78rem;color:#888;margin-bottom:10px">試験を最大3つまで設定できます（名前・問題数・肢の数）。空欄の項目は使いません。</div>
+      <div id="exam-settings-body"></div>
+      <button class="btn btn-gray" id="exam-settings-save" style="width:100%;margin-top:6px">保存</button>
+    </div>
     <div class="modal-row" id="recount-row">&#x1f522; カード件数を数え直す</div>
     <div class="modal-row" id="export-row" style="cursor:pointer">&#x1f4be; データを書き出す（バックアップ）</div>
     <div class="modal-row" id="howto-row">&#x1f4d6; 使い方</div>
@@ -481,13 +486,6 @@
       </div>
     </div>
     <button class="modal-close" id="manage-settings-close">閉じる</button>
-  </div></div>
-  <div class="modal-overlay" id="exam-settings-modal"><div class="modal">
-    <h3>&#x1f4dd; 過去問チェック設定</h3>
-    <div style="font-size:.78rem;color:#888;margin-bottom:10px">試験を最大3つまで設定できます（名前・問題数・肢の数）。空欄の項目は使いません。</div>
-    <div id="exam-settings-body"></div>
-    <button class="btn btn-blue" id="exam-settings-save" style="width:100%;margin-top:6px">保存</button>
-    <button class="modal-close" id="exam-settings-close">閉じる</button>
   </div></div>
   <div class="modal-overlay" id="export-modal"><div class="modal">
     <h3>&#x1f4be; バックアップの準備ができました</h3>
@@ -1722,7 +1720,7 @@ const memoTa=document.getElementById('stats-memo-textarea');
 memoTa.addEventListener('input',e=>{autoResizeMemo(e.target);clearTimeout(memoSaveTimer);memoSaveTimer=setTimeout(()=>saveStudyMemo(e.target.value),600)});
 
 /* ========== Settings ========== */
-document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){const m=document.getElementById('manage-settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{renderManageSubdecks();renderManageCategorySection();renderPublishSection();m.classList.add('active')}}else{const m=document.getElementById('settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('autoplay-settings-section').style.display='none';document.getElementById('howto-section').style.display='none';document.getElementById('reset-group-section').style.display='none';m.classList.add('active')}}});
+document.getElementById('settings-btn').addEventListener('click',()=>{if(currentPage==='manage'){const m=document.getElementById('manage-settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{renderManageSubdecks();renderManageCategorySection();renderPublishSection();m.classList.add('active')}}else{const m=document.getElementById('settings-modal');if(m.classList.contains('active')){m.classList.remove('active')}else{document.getElementById('add-deck-modal-section').style.display='none';document.getElementById('deck-ops-section').style.display='none';document.getElementById('csv-import-section').style.display='none';document.getElementById('autoplay-settings-section').style.display='none';document.getElementById('howto-section').style.display='none';document.getElementById('reset-group-section').style.display='none';document.getElementById('exam-settings-section').style.display='none';m.classList.add('active')}}});
 document.getElementById('settings-close').addEventListener('click',()=>document.getElementById('settings-modal').classList.remove('active'));
 document.getElementById('settings-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove('active')});
 document.getElementById('add-deck-modal-row').addEventListener('click',()=>{const s=document.getElementById('add-deck-modal-section');s.style.display=s.style.display==='none'?'block':'none'});
@@ -1884,9 +1882,8 @@ function saveExamSettings(){
   pastExam.items=items;
   return savePastExam();
 }
-document.getElementById('exam-settings-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');renderExamSettings();document.getElementById('exam-settings-modal').classList.add('active')});
-document.getElementById('exam-settings-close').addEventListener('click',()=>document.getElementById('exam-settings-modal').classList.remove('active'));
-document.getElementById('exam-settings-save').addEventListener('click',async()=>{await saveExamSettings();document.getElementById('exam-settings-modal').classList.remove('active');showToast('保存しました');renderExam()});
+document.getElementById('exam-settings-row').addEventListener('click',()=>{const s=document.getElementById('exam-settings-section');const opening=s.style.display==='none';s.style.display=opening?'block':'none';if(opening)renderExamSettings()});
+document.getElementById('exam-settings-save').addEventListener('click',async()=>{await saveExamSettings();document.getElementById('exam-settings-section').style.display='none';showToast('保存しました');renderExam();if(activeHomeTab==='notes')renderNotes()});
 
 /* ========== データ書き出し（バックアップ） ========== */
 let exportFile=null,exportUrl=null,exportPartial=false;
