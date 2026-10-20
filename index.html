@@ -95,8 +95,10 @@
     .btn-sm{padding:6px 14px;font-size:.8rem}
     .btn-gray{background:#e0e0e0;color:#555}
     #note-modal{padding-top:12px;align-items:flex-start;overflow:hidden}
-    #note-modal .modal{max-height:calc(100dvh - 24px);max-height:calc(var(--vvh,100dvh) - 24px);padding:16px;animation:none}
+    #note-modal .modal{display:flex;flex-direction:column;max-height:calc(100dvh - 24px);max-height:calc(var(--vvh,100dvh) - 24px);padding:16px;animation:none}
+    #note-modal .modal.note-view{height:calc(100dvh - 24px);height:calc(var(--vvh,100dvh) - 24px)}
     #note-modal textarea{height:38vh;min-height:140px;resize:none}
+    #note-view{flex:1;min-height:0;overflow-y:auto;font-size:.95rem;line-height:1.7;color:#444;white-space:pre-wrap;word-break:break-word;background:#f9f9f9;padding:12px;border-radius:6px}
     .btn-red{background:#ef5350;color:#fff}.btn-red:hover{background:#d32f2f}
     .btn-green{background:#4caf50;color:#fff}.btn-green:hover{background:#388e3c}
     .btn-outline{background:none;border:1px solid #ddd;color:#555}.btn-outline:hover{background:#f5f5f5}
@@ -494,9 +496,13 @@
     <a id="export-dl-link" style="display:block;text-align:center;margin-top:12px;font-size:.82rem;color:#2196f3">うまくいかない時はこちらからダウンロード</a>
     <button class="modal-close" id="export-close">閉じる</button>
   </div></div>
-  <div class="modal-overlay" id="note-modal"><div class="modal">
-    <h3 id="note-title">解説</h3>
-    <textarea id="note-text" rows="8" placeholder="自分なりの解説・まとめを入力..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"></textarea>
+  <div class="modal-overlay" id="note-modal"><div class="modal" id="note-box">
+    <div style="display:flex;align-items:center;margin-bottom:10px">
+      <h3 id="note-title" style="flex:1;margin:0;font-size:1rem">解説</h3>
+      <button id="note-edit" style="background:none;border:none;font-size:.85rem;color:#2196f3;text-decoration:underline;padding:0 0 0 8px;cursor:pointer">編集</button>
+    </div>
+    <div id="note-view"></div>
+    <textarea id="note-text" rows="8" placeholder="自分なりの解説・まとめを入力..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.6;box-sizing:border-box"></textarea>
     <div id="note-status" style="font-size:.78rem;color:#888;min-height:1.2em;margin:4px 0 8px"></div>
     <div style="display:flex;gap:8px">
       <button class="btn btn-gray" id="note-save" style="flex:1">保存</button>
@@ -2005,21 +2011,30 @@ function renderNotes(){
   document.getElementById('notes-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderNotes()});
   document.getElementById('notes-grid').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b)return;openNote(it,yr,b.dataset.k)});
 }
+function setNoteMode(mode){
+  const view=mode==='view';
+  document.getElementById('note-box').classList.toggle('note-view',view);
+  document.getElementById('note-view').style.display=view?'block':'none';
+  document.getElementById('note-text').style.display=view?'none':'block';
+  document.getElementById('note-edit').style.display=view?'':'none';
+  document.getElementById('note-save').style.display=view?'none':'';
+}
 async function openNote(it,yr,key){
   const docId=noteDocId(it,yr,key);
   noteCur={it,yr,key,docId};
   const [q,c]=key.split('-');
-  document.getElementById('note-title').textContent=`${it.name} ${yr.label||''}　問${q}${c?' 肢'+c:''}の解説`;
-  const ta=document.getElementById('note-text'),st=document.getElementById('note-status');
-  ta.value='';st.textContent='';
+  document.getElementById('note-title').textContent=`${it.name} ${yr.label||''}　問${q}${c?' 肢'+c:''}`;
+  const ta=document.getElementById('note-text'),st=document.getElementById('note-status'),vw=document.getElementById('note-view');
+  ta.value='';vw.textContent='';st.textContent='';
   document.getElementById('note-modal').classList.add('active');
   if(yr.notes[key]){
-    ta.disabled=true;st.textContent='読み込み中...';
-    try{const t=await getNoteText(docId);if(noteCur&&noteCur.docId===docId){ta.value=t;st.textContent=''}}
-    catch(e){console.error(e);st.textContent='読み込みに失敗しました（通信を確認してください）';return}
-    finally{ta.disabled=false}
+    setNoteMode('view');vw.textContent='読み込み中...';
+    try{const t=await getNoteText(docId);if(noteCur&&noteCur.docId===docId){vw.textContent=t;ta.value=t;st.textContent=''}}
+    catch(e){console.error(e);vw.textContent='読み込みに失敗しました（通信を確認してください）'}
+  }else{
+    setNoteMode('edit');
+    try{ta.focus({preventScroll:true})}catch(e){ta.focus()}
   }
-  if(!yr.notes[key]){try{ta.focus({preventScroll:true})}catch(e){ta.focus()}}
   document.getElementById('note-modal').scrollTop=0;window.scrollTo(0,window.scrollY);
 }
 function closeNote(){document.getElementById('note-modal').classList.remove('active');noteCur=null}
@@ -2036,7 +2051,7 @@ async function saveNote(del){
     const btn=document.querySelector(`#notes-grid button[data-k="${key}"]`);
     if(btn)btn.className=btn.className.replace(/\bs[012]\b/,'s'+(text?1:0));
     renderNotesSummary(it,yr);
-    closeNote();
+    if(text){document.getElementById('note-view').textContent=text;setNoteMode('view')}else closeNote();
     showToast(text?'保存しました':'削除しました');
   }catch(e){
     console.error(e);
@@ -2049,6 +2064,7 @@ if(window.visualViewport){const setVvh=()=>document.documentElement.style.setPro
 document.getElementById('note-save').addEventListener('click',()=>saveNote(false));
 document.getElementById('note-delete').addEventListener('click',()=>{if(!noteCur)return;if(!noteCur.yr.notes[noteCur.key]){document.getElementById('note-text').value='';return}if(confirm('この解説を削除しますか？'))saveNote(true)});
 document.getElementById('note-close').addEventListener('click',closeNote);
+document.getElementById('note-edit').addEventListener('click',()=>{if(!noteCur)return;setNoteMode('edit');const ta=document.getElementById('note-text');try{ta.focus({preventScroll:true})}catch(e){ta.focus()}});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
