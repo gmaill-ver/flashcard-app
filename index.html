@@ -61,7 +61,7 @@
 
     /* ホームタブ */
     .home-tabs{display:flex;background:#fff;border-bottom:1px solid #ddd;margin:0 -16px 16px;padding:0 16px}
-    .home-tab{flex:1;padding:12px;border:none;background:none;font-size:.9rem;cursor:pointer;color:#888;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}
+    .home-tab{flex:1;padding:12px 2px;border:none;background:none;font-size:.85rem;white-space:nowrap;cursor:pointer;color:#888;font-weight:500;border-bottom:2px solid transparent;transition:all .2s}
     .home-tab.active{color:#2196f3;border-bottom-color:#2196f3}
     .home-section{display:none}.home-section.active{display:block}
 
@@ -256,12 +256,16 @@
       <button class="home-tab active" data-tab="my" id="tab-my">マイデッキ</button>
       <button class="home-tab" data-tab="public" id="tab-public">公開デッキ</button>
       <button class="home-tab" data-tab="exam" id="tab-exam">過去問</button>
+      <button class="home-tab" data-tab="notes" id="tab-notes">過去問解説</button>
     </div>
     <div class="home-section active" id="section-my">
       <div class="deck-list" id="deck-list"></div>
     </div>
     <div class="home-section" id="section-exam">
       <div id="exam-area"></div>
+    </div>
+    <div class="home-section" id="section-notes">
+      <div id="notes-area"></div>
     </div>
     <div class="home-section" id="section-public">
       <div id="public-deck-list"></div>
@@ -488,6 +492,16 @@
     <button class="btn btn-blue" id="export-save-btn" style="width:100%">保存する（共有メニューを開く）</button>
     <a id="export-dl-link" style="display:block;text-align:center;margin-top:12px;font-size:.82rem;color:#2196f3">うまくいかない時はこちらからダウンロード</a>
     <button class="modal-close" id="export-close">閉じる</button>
+  </div></div>
+  <div class="modal-overlay" id="note-modal"><div class="modal">
+    <h3 id="note-title">解説</h3>
+    <textarea id="note-text" rows="10" placeholder="自分なりの解説・まとめを入力..." style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.95rem;font-family:inherit;line-height:1.6;resize:vertical;box-sizing:border-box"></textarea>
+    <div id="note-status" style="font-size:.78rem;color:#888;min-height:1.2em;margin:4px 0 8px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-blue" id="note-save" style="flex:1">保存</button>
+      <button class="btn btn-outline" id="note-delete" style="flex:0 0 auto;background:none;border:1px solid #ddd">&#x1f5d1;&#xfe0f;</button>
+    </div>
+    <button class="modal-close" id="note-close">閉じる</button>
   </div></div>
   <div class="toast" id="toast"></div>
 
@@ -1086,6 +1100,7 @@ function setHomeTab(tab){
   document.getElementById(secId).classList.add('active');
   if(tab==='public')loadPublicDecks();
   if(tab==='exam')renderExam();
+  if(tab==='notes')renderNotes();
 }
 document.querySelectorAll('.home-tab').forEach(t=>t.addEventListener('click',()=>setHomeTab(t.dataset.tab)));
 
@@ -1857,11 +1872,11 @@ function saveExamSettings(){
       const idx=parseInt(row.dataset.idx);const label=row.querySelector('.ex-year-name').value.trim();
       if(!label)return;
       const prev=idx>=0&&old.years?old.years[idx]:null;
-      years.push({label,marks:prev?(prev.marks||{}):{}});
+      const y={label,marks:prev?(prev.marks||{}):{}};if(prev&&prev.yid)y.yid=prev.yid;if(prev&&prev.notes)y.notes=prev.notes;years.push(y);
     });
     if(!name||!count){items.push({});return}
     if(!years.length)years.push({label:'標準',marks:{}});
-    items.push({name,count,defChoices:def,choices,years});
+    const ni={name,count,defChoices:def,choices,years};if(old.nid)ni.nid=old.nid;items.push(ni);
   });
   pastExam.items=items;
   return savePastExam();
@@ -1899,8 +1914,9 @@ async function exportAllData(){
         if(snap.docs.length<300)break;
         cursor=snap.docs[snap.docs.length-1];
       }
+      say('解説を取得中...');let examNotes={};try{const ns=await fetchQ(userDoc().collection('examNotes'),15000,'解説');ns.docs.forEach(d=>{examNotes[d.id]=d.data().text||''})}catch(e){}
       say('');exportPartial=partial;
-      data={decks:u.decks||[],cards:allCards,stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:Object.keys(tags).length?tags:(u.globalMemoHashtags||{}),studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam};
+      data={decks:u.decks||[],cards:allCards,stats:u.stats||{},dailyStats:Object.keys(dailyStatsOut).length?dailyStatsOut:(u.dailyStats||{}),globalMemo:u.globalMemo||'',globalMemoHashtags:Object.keys(tags).length?tags:(u.globalMemoHashtags||{}),studyMemo:u.studyMemo||'',pastExam:u.pastExam||pastExam,examNotes};
     }
     data.exportedAt=new Date().toISOString();data.version=1;
     const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
@@ -1925,6 +1941,113 @@ document.getElementById('export-save-btn').addEventListener('click',async()=>{
 });
 document.getElementById('export-close').addEventListener('click',()=>document.getElementById('export-modal').classList.remove('active'));
 document.getElementById('export-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');exportAllData()});
+
+/* ========== 過去問解説（問/肢ごとのメモ。本文は examNotes サブコレクション、有無の目印だけ pastExam に保持） ========== */
+const noteCache={};
+let noteCur=null;
+function newId(){return Math.random().toString(36).slice(2,8)+Date.now().toString(36)}
+function ensureExamIds(){
+  let changed=false;
+  pastExam.items.forEach(it=>{
+    if(!it||!it.name)return;
+    if(!it.nid){it.nid=newId();changed=true}
+    (it.years||[]).forEach(y=>{if(!y.yid){y.yid=newId();changed=true}if(!y.notes){y.notes={};changed=true}});
+  });
+  if(changed)savePastExam();
+}
+function noteDocId(it,yr,key){return `${it.nid}__${yr.yid}__${key}`}
+async function getNoteText(docId){
+  if(docId in noteCache)return noteCache[docId];
+  let text='';
+  if(isGuest){text=(LS.load('fc_examnotes',{})[docId])||''}
+  else{
+    const ref=userDoc().collection('examNotes').doc(docId);
+    let snap;
+    try{snap=await ref.get({source:'cache'});if(!snap.exists)throw 0}catch(e){snap=await ref.get()}
+    text=snap.exists?(snap.data().text||''):'';
+  }
+  noteCache[docId]=text;return text;
+}
+async function putNoteText(docId,text){
+  if(isGuest){const m=LS.load('fc_examnotes',{});if(text)m[docId]=text;else delete m[docId];LS.save('fc_examnotes',m);return}
+  const ref=userDoc().collection('examNotes').doc(docId);
+  if(text)await ref.set({text,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});else await ref.delete();
+}
+function renderNotesSummary(it,yr){
+  let qb=0,cb=0,ct=0;
+  for(let q=1;q<=it.count;q++){if(yr.notes[q])qb++;const n=examChoices(it,q);ct+=n;for(let c=1;c<=n;c++)if(yr.notes[q+'-'+c])cb++}
+  document.getElementById('notes-summary').innerHTML=`解説あり　問題 <span style="color:#2196f3">&#x25a0;</span>${qb} / ${it.count}　肢 <span style="color:#2196f3">&#x25a0;</span>${cb} / ${ct}`;
+}
+function renderNotes(){
+  const area=document.getElementById('notes-area');
+  const act=examActiveItems();
+  if(!act.length){area.innerHTML='<div class="empty-state"><div class="empty-state-icon">&#x1f4dd;</div><p>過去問の設定がありません</p><p style="font-size:.8rem;color:#aaa;margin-top:6px">設定 →「過去問チェック設定」で、試験名と問題数を設定してください</p></div>';return}
+  ensureExamIds();
+  if(!act.some(x=>x.i===examSel))examSel=act[0].i;
+  const it=pastExam.items[examSel];
+  if(!it.years||!it.years.length)it.years=[{label:'標準',marks:{},yid:newId(),notes:{}}];
+  let yi=examYearSel[examSel];if(!(yi>=0&&yi<it.years.length))yi=0;
+  const yr=it.years[yi];if(!yr.notes)yr.notes={};if(!yr.yid)yr.yid=newId();
+  const titleHtml=act.length>1?`<select id="notes-item-sel" class="ex-top-sel">${act.map(x=>`<option value="${x.i}"${x.i===examSel?' selected':''}>${esc(x.it.name)}</option>`).join('')}</select>`:`<span class="ex-title">${esc(it.name)}</span>`;
+  let html=`<div class="ex-head">${titleHtml}<select id="notes-year-sel" class="ex-top-sel">${it.years.map((y,i)=>`<option value="${i}"${i===yi?' selected':''}>${esc(y.label||'標準')}</option>`).join('')}</select></div>`;
+  html+='<div class="ex-summary" id="notes-summary"></div><div id="notes-grid">';
+  for(let q=1;q<=it.count;q++){
+    const n=examChoices(it,q);
+    html+=`<div class="ex-row"><button class="ex-q s${yr.notes[q]?1:0}" data-k="${q}">問${q}</button>`;
+    for(let c=1;c<=n;c++)html+=`<button class="ex-c s${yr.notes[q+'-'+c]?1:0}" data-k="${q}-${c}">${c}</button>`;
+    html+='</div>';
+  }
+  html+='</div>';
+  area.innerHTML=html;
+  renderNotesSummary(it,yr);
+  const is=document.getElementById('notes-item-sel');
+  if(is)is.addEventListener('change',()=>{examSel=parseInt(is.value);LS.save('fc_exam_sel',examSel);renderNotes()});
+  document.getElementById('notes-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderNotes()});
+  document.getElementById('notes-grid').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b)return;openNote(it,yr,b.dataset.k)});
+}
+async function openNote(it,yr,key){
+  const docId=noteDocId(it,yr,key);
+  noteCur={it,yr,key,docId};
+  const [q,c]=key.split('-');
+  document.getElementById('note-title').textContent=`${it.name} ${yr.label||''}　問${q}${c?' 肢'+c:''}の解説`;
+  const ta=document.getElementById('note-text'),st=document.getElementById('note-status');
+  ta.value='';st.textContent='';
+  document.getElementById('note-delete').style.display=yr.notes[key]?'':'none';
+  document.getElementById('note-modal').classList.add('active');
+  if(yr.notes[key]){
+    ta.disabled=true;st.textContent='読み込み中...';
+    try{const t=await getNoteText(docId);if(noteCur&&noteCur.docId===docId){ta.value=t;st.textContent=''}}
+    catch(e){console.error(e);st.textContent='読み込みに失敗しました（通信を確認してください）';return}
+    finally{ta.disabled=false}
+  }
+  ta.focus();
+}
+function closeNote(){document.getElementById('note-modal').classList.remove('active');noteCur=null}
+async function saveNote(del){
+  if(!noteCur)return;
+  const {it,yr,key,docId}=noteCur;
+  const text=del?'':document.getElementById('note-text').value.trim();
+  const sb=document.getElementById('note-save'),db_=document.getElementById('note-delete');
+  sb.disabled=true;db_.disabled=true;
+  try{
+    await putNoteText(docId,text);
+    if(text){yr.notes[key]=1;noteCache[docId]=text}else{delete yr.notes[key];delete noteCache[docId]}
+    await savePastExam();
+    const btn=document.querySelector(`#notes-grid button[data-k="${key}"]`);
+    if(btn)btn.className=btn.className.replace(/\bs[012]\b/,'s'+(text?1:0));
+    renderNotesSummary(it,yr);
+    closeNote();
+    showToast(text?'保存しました':'削除しました');
+  }catch(e){
+    console.error(e);
+    if(e&&e.code==='permission-denied')alert('保存できませんでした（Firestoreルールの反映が必要です）\nターミナルで firebase deploy --only firestore:rules を実行してください');
+    else showToast('保存に失敗しました');
+  }
+  sb.disabled=false;db_.disabled=false;
+}
+document.getElementById('note-save').addEventListener('click',()=>saveNote(false));
+document.getElementById('note-delete').addEventListener('click',()=>{if(confirm('この解説を削除しますか？'))saveNote(true)});
+document.getElementById('note-close').addEventListener('click',closeNote);
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
