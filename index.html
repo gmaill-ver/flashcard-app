@@ -94,6 +94,15 @@
     .btn-blue{background:#2196f3;color:#fff}.btn-blue:hover{background:#1976d2}
     .btn-sm{padding:6px 14px;font-size:.8rem}
     .btn-gray{background:#e0e0e0;color:#555}
+    .rt-ur,.rt-ub,.rt-hr,.rt-ho,.rt-hb,.rt-hg{-webkit-box-decoration-break:clone;box-decoration-break:clone}
+    .rt-ur{text-decoration:underline;text-decoration-color:#e53935;text-decoration-thickness:2px;text-underline-offset:3px}
+    .rt-ub{text-decoration:underline;text-decoration-color:#1e88e5;text-decoration-thickness:2px;text-underline-offset:3px}
+    .rt-hr{background:#ffcdd2;border-radius:3px}
+    .rt-ho{background:#ffe0b2;border-radius:3px}
+    .rt-hb{background:#bbdefb;border-radius:3px}
+    .rt-hg{background:#c8e6c9;border-radius:3px}
+    .rt-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;flex-shrink:0}
+    .rt-bar button{min-width:38px;height:34px;padding:0 8px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:.9rem;color:#333;cursor:pointer;touch-action:manipulation}
     #note-modal{inset:56px 0 70px 0;padding:0;align-items:flex-start;overflow:hidden;background:rgba(0,0,0,.4)}
     #note-modal .modal{display:flex;flex-direction:column;max-height:100%;max-height:min(100%,calc(var(--vvh,100dvh) - 64px));padding:22px 16px;animation:none;border-radius:0}
     #note-modal .modal.note-view{height:100%}
@@ -1455,7 +1464,7 @@ document.getElementById('global-memo-hashtag-list').addEventListener('click',asy
     const view=document.getElementById('global-hashtag-content-view');
     const area=document.getElementById('global-hashtag-content-edit-area');
     title.textContent=`#${tag}`;
-    view.textContent=globalMemoHashtags[tag]||'（内容はまだありません）';
+    view.innerHTML=renderRich(globalMemoHashtags[tag]||'（内容はまだありません）');
     area.value=globalMemoHashtags[tag]||'';
     wrap.style.display='block';
   }
@@ -1493,7 +1502,7 @@ document.getElementById('global-hashtag-content-save').addEventListener('click',
   const view=document.getElementById('global-hashtag-content-view');
   const save=document.getElementById('global-hashtag-content-save');
   const btn=document.getElementById('global-hashtag-content-edit');
-  view.textContent=content||'（内容はまだありません）';
+  view.innerHTML=renderRich(content||'（内容はまだありません）');
   view.style.display='block';area.style.display='none';save.style.display='none';
   btn.textContent='編集';
   showToast('保存しました');
@@ -2036,7 +2045,7 @@ async function openNote(it,yr,key){
   document.getElementById('note-modal').classList.add('active');
   if(yr.notes[key]){
     setNoteMode('view');vw.textContent='読み込み中...';
-    try{const t=await getNoteText(docId);if(noteCur&&noteCur.docId===docId){vw.textContent=t;ta.value=t;st.textContent=''}}
+    try{const t=await getNoteText(docId);if(noteCur&&noteCur.docId===docId){vw.innerHTML=renderRich(t);ta.value=t;st.textContent=''}}
     catch(e){console.error(e);vw.textContent='読み込みに失敗しました（通信を確認してください）'}
   }else{
     setNoteMode('edit');
@@ -2058,7 +2067,7 @@ async function saveNote(del){
     const btn=document.querySelector(`#notes-grid button[data-k="${key}"]`);
     if(btn)btn.className=btn.className.replace(/\bs[012]\b/,'s'+(text?1:0));
     renderNotesSummary(it,yr);
-    if(text){document.getElementById('note-view').textContent=text;setNoteMode('view')}else closeNote();
+    if(text){document.getElementById('note-view').innerHTML=renderRich(text);setNoteMode('view')}else closeNote();
     showToast(text?'保存しました':'削除しました');
   }catch(e){
     console.error(e);
@@ -2072,6 +2081,70 @@ document.getElementById('note-save').addEventListener('click',()=>saveNote(false
 document.getElementById('note-delete').addEventListener('click',()=>{if(!noteCur)return;if(!noteCur.yr.notes[noteCur.key]){document.getElementById('note-text').value='';return}if(confirm('この解説を削除しますか？'))saveNote(true)});
 document.getElementById('note-close').addEventListener('click',closeNote);
 document.getElementById('note-edit').addEventListener('click',()=>{if(!noteCur)return;setNoteMode('edit');const ta=document.getElementById('note-text');try{ta.focus({preventScroll:true})}catch(e){ta.focus()}});
+
+/* ========== リッチ装飾（選択範囲に下線/塗りつぶし。本文には ⟦ur⟧…⟦/ur⟧ の印として保存） ========== */
+const RT_TAGS={ur:1,ub:1,hr:1,ho:1,hb:1,hg:1};
+function renderRich(text){
+  const parts=String(text).split(/(⟦\/?[a-z]{2}⟧)/);
+  const active=new Set();let html='';
+  for(const part of parts){
+    const m=part.match(/^⟦(\/?)([a-z]{2})⟧$/);
+    if(m&&RT_TAGS[m[2]]){if(m[1])active.delete(m[2]);else active.add(m[2]);continue}
+    if(!part)continue;
+    const cls=[...active].map(t=>'rt-'+t).join(' ');
+    html+=cls?`<span class="${cls}">${esc(part)}</span>`:esc(part);
+  }
+  return html;
+}
+function rtApply(ta,tag){
+  const s=ta.selectionStart,e=ta.selectionEnd;
+  if(s===e){showToast('文字を選択してから押してください');return}
+  const v=ta.value,open=`⟦${tag}⟧`;
+  ta.value=v.slice(0,s)+open+v.slice(s,e)+`⟦/${tag}⟧`+v.slice(e);
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+  try{ta.focus({preventScroll:true})}catch(x){ta.focus()}
+  ta.setSelectionRange(s+open.length,e+open.length);
+}
+function rtClear(ta){
+  const s=ta.selectionStart,e=ta.selectionEnd,v=ta.value;
+  if(s===e){
+    if(!confirm('この文章の装飾をすべて解除しますか？'))return;
+    ta.value=v.replace(/⟦\/?[a-z]{2}⟧/g,'');
+  }else{
+    const re=/⟦(\/?)([a-z]{2})⟧/g;let m;const stacks={};const kill=[];
+    while((m=re.exec(v))){
+      const t=m[2],st=stacks[t]||(stacks[t]=[]),a=m.index,b=a+m[0].length;
+      if(!m[1])st.push([a,b]);
+      else{const o=st.pop();if(o&&o[0]<e&&b>s)kill.push(o,[a,b])}
+    }
+    // 選択範囲内にある開始/終了の印も取り除く（相方が範囲外の場合は相方も除去）
+    kill.sort((x,y)=>y[0]-x[0]);
+    let out=v;for(const [a,b] of kill)out=out.slice(0,a)+out.slice(b);
+    ta.value=out;
+  }
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function createRtBar(ta){
+  const bar=document.createElement('div');bar.className='rt-bar';
+  const items=[
+    ['ur','<span style="text-decoration:underline;text-decoration-color:#e53935;text-decoration-thickness:2px;text-underline-offset:3px">A</span>','赤の下線'],
+    ['ub','<span style="text-decoration:underline;text-decoration-color:#1e88e5;text-decoration-thickness:2px;text-underline-offset:3px">A</span>','青の下線'],
+    ['hr','<span style="background:#ffcdd2;padding:0 4px;border-radius:3px">A</span>','薄い赤で塗る'],
+    ['ho','<span style="background:#ffe0b2;padding:0 4px;border-radius:3px">A</span>','薄いオレンジで塗る'],
+    ['hb','<span style="background:#bbdefb;padding:0 4px;border-radius:3px">A</span>','薄い青で塗る'],
+    ['hg','<span style="background:#c8e6c9;padding:0 4px;border-radius:3px">A</span>','薄い緑で塗る'],
+    ['clear','&#x2715;','選択部分の装飾を解除（未選択なら全解除）']
+  ];
+  bar.innerHTML=items.map(([k,l,t])=>`<button type="button" data-rt="${k}" title="${t}">${l}</button>`).join('');
+  bar.addEventListener('mousedown',e=>e.preventDefault());
+  bar.addEventListener('click',e=>{const b=e.target.closest('button[data-rt]');if(!b)return;if(b.dataset.rt==='clear')rtClear(ta);else rtApply(ta,b.dataset.rt)});
+  ta.parentNode.insertBefore(bar,ta);
+  const sync=()=>{bar.style.display=getComputedStyle(ta).display==='none'?'none':'flex'};
+  new MutationObserver(sync).observe(ta,{attributes:true,attributeFilter:['style','class']});
+  sync();
+  return bar;
+}
+['global-memo','global-hashtag-content-edit-area','note-text'].forEach(id=>{const ta=document.getElementById(id);if(ta)createRtBar(ta)});
 
 /* ========== Util ========== */
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
