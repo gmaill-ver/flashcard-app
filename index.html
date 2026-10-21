@@ -101,7 +101,7 @@
     .rt-ho{background:#ffe0b2;border-radius:3px}
     .rt-hb{background:#bbdefb;border-radius:3px}
     .rt-hg{background:#c8e6c9;border-radius:3px}
-    .rt-bar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;flex-shrink:0}
+    .rt-bar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;flex-shrink:0}
     .rt-bar button{min-width:38px;height:34px;padding:0 8px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:.9rem;color:#333;cursor:pointer;touch-action:manipulation}
     #note-modal{inset:56px 0 70px 0;padding:0;align-items:flex-start;overflow:hidden;background:rgba(0,0,0,.4)}
     #note-modal .modal{display:flex;flex-direction:column;max-height:100%;max-height:min(100%,calc(var(--vvh,100dvh) - 64px));padding:22px 16px;animation:none;border-radius:0}
@@ -2138,7 +2138,7 @@ function createRtBar(ta){
   bar.innerHTML=items.map(([k,l,t])=>`<button type="button" data-rt="${k}" title="${t}">${l}</button>`).join('');
   bar.addEventListener('mousedown',e=>e.preventDefault());
   bar.addEventListener('click',e=>{const b=e.target.closest('button[data-rt]');if(!b)return;if(b.dataset.rt==='clear')rtClear(ta);else rtApply(ta,b.dataset.rt)});
-  ta.parentNode.insertBefore(bar,ta);
+  ta.parentNode.insertBefore(bar,ta.nextSibling);
   const sync=()=>{bar.style.display=getComputedStyle(ta).display==='none'?'none':'flex'};
   new MutationObserver(sync).observe(ta,{attributes:true,attributeFilter:['style','class']});
   sync();
