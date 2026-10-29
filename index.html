@@ -2023,9 +2023,10 @@ function renderNotes(){
     html+='</div>';
   }
   html+='</div>';
-  if(!isGuest)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-outline btn-sm" id="notes-recover" type="button">解説の復旧（消えた解説を探す）</button> <button class="btn btn-outline btn-sm" id="notes-clear-year" type="button" style="color:#e53935;border-color:#e53935">この年度の解説を全部消す</button></div>';
+  if(!isGuest)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-outline btn-sm" id="notes-recover" type="button">解説の復旧（消えた解説を探す）</button> <button class="btn btn-outline btn-sm" id="notes-organize" type="button">解説を一覧で整理（移動・削除）</button> <button class="btn btn-outline btn-sm" id="notes-clear-year" type="button" style="color:#e53935;border-color:#e53935">この年度の解説を全部消す</button></div>';
   area.innerHTML=html;
   renderNotesSummary(it,yr);
+  const og=document.getElementById('notes-organize');if(og)og.addEventListener('click',()=>organizeNotes(it,yr,og));
   const cy=document.getElementById('notes-clear-year');
   if(cy)cy.addEventListener('click',async()=>{
     const cnt=Object.keys(yr.notes||{}).length;
@@ -2042,6 +2043,44 @@ function renderNotes(){
   if(is)is.addEventListener('change',()=>{examSel=parseInt(is.value);LS.save('fc_exam_sel',examSel);renderNotes()});
   document.getElementById('notes-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderNotes()});
   document.getElementById('notes-grid').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b)return;openNote(it,yr,b.dataset.k)});
+}
+async function organizeNotes(it,yr,btn){
+  btn.disabled=true;
+  try{
+    const keys=Object.keys(yr.notes||{}).sort((a,b)=>{const[x1,y1]=a.split('-').map(Number),[x2,y2]=b.split('-').map(Number);return x1-x2||(y1||0)-(y2||0)});
+    if(!keys.length){alert('この年度に解説はありません');btn.disabled=false;return}
+    const snap=await userDoc().collection('examNotes').get({source:'server'});
+    const T={};const pre=it.nid+'__'+yr.yid+'__';
+    snap.docs.forEach(d=>{if(d.id.startsWith(pre))T[d.id.slice(pre.length)]=d.data().text||''});
+    const others=it.years.map((y,i)=>({y,i})).filter(x=>x.y!==yr);
+    const rows=keys.map(k=>{const [q,c]=k.split('-');return `<label style="display:flex;gap:8px;align-items:flex-start;border-bottom:1px solid #eee;padding:6px 2px;font-size:.85rem"><input type="checkbox" class="og-ck" data-k="${k}" style="margin-top:4px;width:18px;height:18px"><span><b>問${q}${c?' 肢'+c:''}</b><br><span style="color:#666">${esc((T[k]||'(本文なし)').slice(0,70))}</span></span></label>`}).join('');
+    document.getElementById('notes-area').innerHTML=`<div style="padding:8px"><p style="font-size:.9rem"><b>${esc(it.name)} ${esc(yr.label||'')}</b> の解説 ${keys.length}件。チェックしたものを移動／削除できます。</p><div style="position:sticky;top:0;background:#fff;padding:6px 0;z-index:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button class="btn btn-outline btn-sm" id="og-all" type="button">全選択/解除</button><select id="og-target" class="ex-top-sel">${others.map(x=>`<option value="${x.i}">${esc(x.y.label||'標準')}</option>`).join('')}</select><button class="btn btn-primary btn-sm" id="og-move" type="button">選択を移動</button><button class="btn btn-outline btn-sm" id="og-del" type="button" style="color:#e53935;border-color:#e53935">選択を削除</button><button class="btn btn-outline btn-sm" id="og-back" type="button">戻る</button></div>${rows}</div>`;
+    const sel=()=>[...document.querySelectorAll('.og-ck:checked')].map(e=>e.dataset.k);
+    document.getElementById('og-back').addEventListener('click',renderNotes);
+    document.getElementById('og-all').addEventListener('click',()=>{const cks=[...document.querySelectorAll('.og-ck')];const on=cks.some(c=>!c.checked);cks.forEach(c=>c.checked=on)});
+    document.getElementById('og-del').addEventListener('click',async()=>{
+      const ks=sel();if(!ks.length)return;
+      if(!confirm(`選択した${ks.length}件を「${yr.label||''}」から削除します（本文はサーバーに残ります）。よろしいですか？`))return;
+      ks.forEach(k=>{delete yr.notes[k];delete noteCache[noteDocId(it,yr,k)]});
+      await savePastExam();showToast(ks.length+'件を削除しました');renderNotes();
+    });
+    document.getElementById('og-move').addEventListener('click',async()=>{
+      const ks=sel();if(!ks.length)return;
+      const ty=it.years[parseInt(document.getElementById('og-target').value)];if(!ty)return;
+      if(!ty.notes)ty.notes={};
+      const clash=ks.filter(k=>ty.notes[k]);
+      if(!confirm(`選択した${ks.length}件を「${ty.label||''}」へ移動します。`+(clash.length?`\n※${clash.length}件は移動先に既に解説があり、上書きされます。`:'')+'\nよろしいですか？'))return;
+      try{
+        for(const k of ks){
+          const nd=noteDocId(it,ty,k);
+          await userDoc().collection('examNotes').doc(nd).set({text:T[k]||'',updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+          noteCache[nd]=T[k]||'';ty.notes[k]=1;
+          delete yr.notes[k];delete noteCache[noteDocId(it,yr,k)];
+        }
+        await savePastExam();showToast(ks.length+'件を移動しました');renderNotes();
+      }catch(e){console.error(e);alert('移動に失敗しました: '+(e&&e.message||e))}
+    });
+  }catch(e){console.error(e);alert('読み込みに失敗しました: '+(e&&e.message||e));btn.disabled=false}
 }
 async function recoverNotesByGroup(it,btn){
   btn.disabled=true;
