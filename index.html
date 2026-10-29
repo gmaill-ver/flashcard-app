@@ -2026,11 +2026,63 @@ function renderNotes(){
   if(!isGuest)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-outline btn-sm" id="notes-recover" type="button">解説の復旧（消えた解説を探す）</button></div>';
   area.innerHTML=html;
   renderNotesSummary(it,yr);
-  const rb=document.getElementById('notes-recover');if(rb)rb.addEventListener('click',()=>recoverNotes(it,yr,rb));
+  const rb=document.getElementById('notes-recover');if(rb)rb.addEventListener('click',()=>recoverNotesByGroup(it,rb));
   const is=document.getElementById('notes-item-sel');
   if(is)is.addEventListener('change',()=>{examSel=parseInt(is.value);LS.save('fc_exam_sel',examSel);renderNotes()});
   document.getElementById('notes-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderNotes()});
   document.getElementById('notes-grid').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b)return;openNote(it,yr,b.dataset.k)});
+}
+async function recoverNotesByGroup(it,btn){
+  btn.disabled=true;
+  try{
+    const snap=await userDoc().collection('examNotes').get({source:'server'});
+    const G={};
+    snap.docs.forEach(d=>{
+      const parts=d.id.split('__');if(parts.length!==3)return;
+      const text=d.data().text||'';if(!text)return;
+      const ts=d.data().updatedAt&&d.data().updatedAt.toMillis?d.data().updatedAt.toMillis():0;
+      const g=parts[0]+'__'+parts[1];
+      (G[g]=G[g]||[]).push({k:parts[2],text,ts});
+    });
+    const gids=Object.keys(G);
+    if(!gids.length){alert('解説が見つかりませんでした');btn.disabled=false;return}
+    const fmt=t=>t?new Date(t).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'?';
+    const yOpts=sel=>'<option value="-1">使わない</option>'+it.years.map((y,i)=>`<option value="${i}"${i===sel?' selected':''}>${esc(y.label||'標準')}</option>`).join('');
+    const rows=gids.map(g=>{
+      const arr=G[g].sort((a,b)=>a.ts-b.ts);
+      const [nid,yid]=g.split('__');
+      const curIdx=nid===it.nid?it.years.findIndex(y=>y.yid===yid):-1;
+      const keys=arr.map(x=>x.k).sort((a,b)=>parseInt(a)-parseInt(b)||a.localeCompare(b)).join(', ');
+      const prev=arr.slice(0,2).map(x=>`問${x.k}: ${esc(x.text.slice(0,40))}`).join('<br>');
+      return `<div style="border:1px solid #ddd;border-radius:8px;padding:8px;margin:8px 0;font-size:.85rem"><div><b>${arr.length}件</b>　保存日 ${fmt(arr[0].ts)}〜${fmt(arr[arr.length-1].ts)}${curIdx>=0?'　<span style="color:#2196f3">（現在の'+esc(it.years[curIdx].label)+'のデータ）</span>':''}</div><div style="color:#888;word-break:break-all">問: ${keys}</div><div style="color:#555;margin:4px 0">${prev}</div>割当: <select class="rg-sel" data-g="${g}">${yOpts(-1)}</select></div>`;
+    }).join('');
+    document.getElementById('notes-area').innerHTML=`<div style="padding:8px"><p style="font-size:.85rem">見つかった解説のグループです。中身（問番号・保存日・本文の冒頭）を見て、どの年度か選んでください。選んだ年度の解説は、選んだグループの内容で置き換わります（元のデータは削除しません）。同じ年度に複数選ぶと合算されます。</p>${rows}<div style="text-align:center;margin:12px"><button class="btn btn-primary" id="rg-go">この割当で復元</button> <button class="btn btn-outline" id="rg-cancel">キャンセル</button></div></div>`;
+    document.getElementById('rg-cancel').addEventListener('click',renderNotes);
+    document.getElementById('rg-go').addEventListener('click',async()=>{
+      const plan={};
+      document.querySelectorAll('.rg-sel').forEach(sl=>{const v=parseInt(sl.value);if(v>=0)(plan[v]=plan[v]||[]).push(sl.dataset.g)});
+      const yis=Object.keys(plan);
+      if(!yis.length){alert('年度を割り当てたグループがありません');return}
+      if(!confirm('選んだ年度の解説を、選んだグループの内容で置き換えます。よろしいですか？'))return;
+      const go=document.getElementById('rg-go');go.disabled=true;
+      try{
+        let n=0;
+        for(const yi of yis){
+          const yr=it.years[yi];const best={};
+          plan[yi].forEach(g=>G[g].forEach(x=>{if(!best[x.k]||x.ts>=best[x.k].ts)best[x.k]=x}));
+          const notes={};
+          for(const k of Object.keys(best)){
+            const docId=noteDocId(it,yr,k);
+            await userDoc().collection('examNotes').doc(docId).set({text:best[k].text,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+            noteCache[docId]=best[k].text;notes[k]=1;n++;
+          }
+          yr.notes=notes;
+        }
+        await savePastExam();
+        showToast(n+'件を復元しました');renderNotes();
+      }catch(e){console.error(e);alert('復元に失敗しました: '+(e&&e.message||e));go.disabled=false}
+    });
+  }catch(e){console.error(e);alert('読み込みに失敗しました: '+(e&&e.message||e));btn.disabled=false}
 }
 async function recoverNotes(it,yr,btn){
   btn.disabled=true;
