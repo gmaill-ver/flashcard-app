@@ -2023,12 +2023,42 @@ function renderNotes(){
     html+='</div>';
   }
   html+='</div>';
+  if(!isGuest)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-outline btn-sm" id="notes-recover" type="button">解説の復旧（消えた解説を探す）</button></div>';
   area.innerHTML=html;
   renderNotesSummary(it,yr);
+  const rb=document.getElementById('notes-recover');if(rb)rb.addEventListener('click',()=>recoverNotes(it,yr,rb));
   const is=document.getElementById('notes-item-sel');
   if(is)is.addEventListener('change',()=>{examSel=parseInt(is.value);LS.save('fc_exam_sel',examSel);renderNotes()});
   document.getElementById('notes-year-sel').addEventListener('change',e=>{examYearSel[examSel]=parseInt(e.target.value);LS.save('fc_exam_year',examYearSel);renderNotes()});
   document.getElementById('notes-grid').addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(!b)return;openNote(it,yr,b.dataset.k)});
+}
+async function recoverNotes(it,yr,btn){
+  btn.disabled=true;
+  try{
+    const snap=await userDoc().collection('examNotes').get({source:'server'});
+    const cur=it.nid+'__'+yr.yid+'__';
+    const best={};let orphan=0,groups=new Set();
+    snap.docs.forEach(d=>{
+      const parts=d.id.split('__');if(parts.length!==3)return;
+      const text=(d.data().text||'');if(!text)return;
+      const ts=d.data().updatedAt&&d.data().updatedAt.toMillis?d.data().updatedAt.toMillis():0;
+      if(!d.id.startsWith(cur)){orphan++;groups.add(parts[0]+'__'+parts[1])}
+      const k=parts[2];
+      if(!best[k]||ts>=best[k].ts)best[k]={ts,text,id:d.id};
+    });
+    const keys=Object.keys(best);
+    if(!keys.length){alert('Firestoreに解説が1件も見つかりませんでした。');btn.disabled=false;return}
+    if(!confirm(`解説が全部で${snap.size}件見つかりました（現在の表示以外のIDのもの: ${orphan}件 / ${groups.size}グループ）。\n問・肢ごとに一番新しいものを選び、${keys.length}件を「${it.name} ${yr.label||''}」に統合します。\n元のデータは削除しません。実行しますか？`)){btn.disabled=false;return}
+    let n=0;
+    for(const k of keys){
+      const docId=noteDocId(it,yr,k);
+      if(best[k].id!==docId){await userDoc().collection('examNotes').doc(docId).set({text:best[k].text,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})}
+      yr.notes[k]=1;noteCache[docId]=best[k].text;n++;
+    }
+    await savePastExam();
+    showToast(n+'件を復旧しました');
+    renderNotes();
+  }catch(e){console.error(e);alert('復旧に失敗しました: '+(e&&e.message||e));btn.disabled=false}
 }
 function fitNoteModal(){
   const f=document.querySelector('footer'),hd=document.getElementById('app-header');
