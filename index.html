@@ -2023,9 +2023,20 @@ function renderNotes(){
     html+='</div>';
   }
   html+='</div>';
-  if(!isGuest)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-outline btn-sm" id="notes-recover" type="button">解説の復旧（消えた解説を探す）</button></div>';
+  if(!isGuest)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-outline btn-sm" id="notes-recover" type="button">解説の復旧（消えた解説を探す）</button> <button class="btn btn-outline btn-sm" id="notes-clear-year" type="button" style="color:#e53935;border-color:#e53935">この年度の解説を全部消す</button></div>';
   area.innerHTML=html;
   renderNotesSummary(it,yr);
+  const cy=document.getElementById('notes-clear-year');
+  if(cy)cy.addEventListener('click',async()=>{
+    const cnt=Object.keys(yr.notes||{}).length;
+    if(!cnt){alert('この年度に解説はありません');return}
+    if(!confirm(`「${it.name} ${yr.label||''}」の解説${cnt}件を一覧から全部消します。他の年度には影響しません。よろしいですか？`))return;
+    if(!confirm(`本当に「${yr.label||''}」の解説をすべて消しますか？`))return;
+    yr.notes={};
+    for(const k of Object.keys(noteCache)){if(k.startsWith(it.nid+'__'+yr.yid+'__'))delete noteCache[k]}
+    await savePastExam();
+    showToast('消しました');renderNotes();
+  });
   const rb=document.getElementById('notes-recover');if(rb)rb.addEventListener('click',()=>recoverNotesByGroup(it,rb));
   const is=document.getElementById('notes-item-sel');
   if(is)is.addEventListener('change',()=>{examSel=parseInt(is.value);LS.save('fc_exam_sel',examSel);renderNotes()});
