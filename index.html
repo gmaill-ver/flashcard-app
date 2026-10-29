@@ -1062,7 +1062,7 @@ document.getElementById('guest-login-btn').addEventListener('click',()=>{isGuest
 document.getElementById('logout-row').addEventListener('click',async()=>{document.getElementById('settings-modal').classList.remove('active');if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 document.getElementById('header-user').addEventListener('click',async()=>{if(!confirm('ログアウトしますか？'))return;if(isGuest){isGuest=false;showPage('login');document.getElementById('app-header').style.display='none';return}await auth.signOut()});
 auth.onAuthStateChanged(async u=>{if(u&&!isGuest){currentUser=u;isGuest=false;await initApp()}else if(!isGuest){currentUser=null;document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='none';showPage('login');try{const m=await db.collection('meta').doc('stats').get();if(m.exists){const n=m.data().totalUsers||0;if(n>=100){document.getElementById('user-count-num').textContent=n;document.getElementById('user-count').style.display='block'}}}catch(e){}}});
-async function initApp(){showLoading();await loadData();loadPastExam();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home');backgroundTasks()}
+async function initApp(){showLoading();await loadData();await loadPastExam();document.getElementById('loading').classList.add('hidden');document.getElementById('app-header').style.display='flex';if(!isGuest&&currentUser?.photoURL){document.getElementById('header-avatar').src=currentUser.photoURL;document.getElementById('header-avatar').style.display='block';document.getElementById('header-user-icon').style.display='none'}else{document.getElementById('header-avatar').style.display='none';document.getElementById('header-user-icon').style.display='block'}navigateTo('home');backgroundTasks()}
 async function backgroundTasks(){
   try{
     if(!isGuest){
@@ -1763,6 +1763,7 @@ document.getElementById('manage-settings-modal').addEventListener('click',e=>{if
 /* 大項目=資格(最大3): {name,count,defChoices,choices,years:[{label,marks}]} / 中項目=年度ごとのチェック */
 const EXAM_MAX_ITEMS=3;
 let pastExam={items:[]};
+let pastExamFromServer=false;
 let examSel=0;
 let examYearSel={};
 let examSaveTimer=null;
@@ -1773,8 +1774,16 @@ function migrateExamItem(it){
   const name=m?m[1]:it.name,label=m?m[2]:'標準';
   return {name,count:it.count,defChoices:it.defChoices,choices:it.choices||{},years:[{label,marks:it.marks||{}}]};
 }
-function loadPastExam(){
+async function loadPastExam(){
   let d=isGuest?LS.load('fc_pastexam',null):(typeof userDocData!=='undefined'&&userDocData?userDocData.pastExam:null);
+  // 端末のキャッシュが古いと、他端末で保存した解説の目印/IDを上書きしてしまうため、サーバー最新を優先して読む（オフライン時のみキャッシュ）
+  if(!isGuest){
+    try{
+      const sv=await Promise.race([userDoc().get({source:'server'}),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))]);
+      if(sv.exists){d=sv.data().pastExam||null;if(typeof userDocData!=='undefined'&&userDocData)userDocData.pastExam=d}
+      pastExamFromServer=true;
+    }catch(e){console.warn('pastExam: server fetch failed, using cache',e)}
+  }
   pastExam=(d&&Array.isArray(d.items))?d:{items:[]};
   pastExam.items=pastExam.items.map(migrateExamItem);
   examSel=LS.load('fc_exam_sel',0);
@@ -1783,11 +1792,12 @@ function loadPastExam(){
   if(!pastExam.seeded&&!pastExam.items.some(x=>x&&x.name)){
     pastExam.items=[{name:'行政書士',count:60,defChoices:5,choices:{41:4,42:4,43:4,44:1,45:1,46:1},years:[{label:'R7',marks:{}}]}];
     pastExam.seeded=true;
+    if(isGuest||pastExamFromServer)savePastExam();
   }
-  savePastExam();
 }
 async function savePastExam(){
   if(isGuest){LS.save('fc_pastexam',pastExam);return}
+  if(!pastExamFromServer){showToast('サーバーと同期できていないため保存を見送りました。再読み込みしてください');return}
   try{await userDoc().update({pastExam})}catch(e){console.error(e);showToast('保存に失敗しました')}
 }
 function examChoices(it,q){return (it.choices&&it.choices[q])||it.defChoices||5}
@@ -1978,7 +1988,7 @@ async function getNoteText(docId){
   else{
     const ref=userDoc().collection('examNotes').doc(docId);
     let snap;
-    try{snap=await ref.get({source:'cache'});if(!snap.exists)throw 0}catch(e){snap=await ref.get()}
+    try{snap=await ref.get({source:'server'})}catch(e){snap=await ref.get()}
     text=snap.exists?(snap.data().text||''):'';
   }
   noteCache[docId]=text;return text;
