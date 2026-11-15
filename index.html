@@ -449,6 +449,8 @@
     </div>
     <div class="modal-row" id="recount-row">&#x1f522; カード件数を数え直す</div>
     <div class="modal-row" id="export-row" style="cursor:pointer">&#x1f4be; データを書き出す（バックアップ）</div>
+    <div class="modal-row" id="restore-row" style="cursor:pointer">&#x1f4c2; バックアップから戻す（消えた分だけ）</div>
+    <input type="file" id="restore-file" accept=".json,application/json" style="display:none">
     <div class="modal-row" id="howto-row">&#x1f4d6; 使い方</div>
     <div id="howto-section" style="display:none;padding:12px 0;font-size:.82rem;color:#555;line-height:1.9">
       <b>1. デッキを作成</b><br>設定 → 「デッキを追加」から科目名を入力して追加します。<br><br>
@@ -1966,6 +1968,98 @@ document.getElementById('export-save-btn').addEventListener('click',async()=>{
 });
 document.getElementById('export-close').addEventListener('click',()=>document.getElementById('export-modal').classList.remove('active'));
 document.getElementById('export-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');exportAllData()});
+/* ========== バックアップから戻す（今あるデータは上書きせず、無くなったものだけ足す） ========== */
+function restoreMergeExam(cur,bk){
+  // 過去問: 試験(nid)・年度(yid)が無ければ追加、あれば解説の目印/チェックの無いキーだけ足す
+  let n=0;const out=JSON.parse(JSON.stringify(cur&&Array.isArray(cur.items)?cur:{items:[]}));
+  for(const bi of (bk&&Array.isArray(bk.items)?bk.items:[])){
+    if(!bi||!bi.name)continue;
+    const ci=(bi.nid&&out.items.find(x=>x&&x.nid===bi.nid))||out.items.find(x=>x&&x.name===bi.name);
+    if(!ci){out.items.push(JSON.parse(JSON.stringify(bi)));n++;continue}
+    if(!Array.isArray(ci.years))ci.years=[];
+    for(const by of (bi.years||[])){
+      const cy=(by.yid&&ci.years.find(y=>y.yid===by.yid))||ci.years.find(y=>y.label===by.label);
+      if(!cy){ci.years.push(JSON.parse(JSON.stringify(by)));n++;continue}
+      for(const f of ['notes','marks']){const src=by[f]||{};if(!cy[f])cy[f]={};for(const k of Object.keys(src)){if(!(k in cy[f])){cy[f][k]=src[k];n++}}}
+    }
+  }
+  return {out,n};
+}
+async function restoreFromBackup(file){
+  let bk;
+  try{bk=JSON.parse(await file.text())}catch(e){alert('ファイルを読めませんでした（書き出したJSONファイルを選んでください）');return}
+  if(!bk||!Array.isArray(bk.cards)||!Array.isArray(bk.decks)){alert('このアプリで書き出したバックアップではないようです');return}
+  const when=bk.exportedAt?new Date(bk.exportedAt).toLocaleString('ja-JP'):'不明';
+  showLoading();const msg=document.getElementById('loading-msg');const say=t=>{if(msg)msg.textContent=t};
+  const done=()=>{say('');document.getElementById('loading').classList.add('hidden')};
+  try{
+    const bkNotes=bk.examNotes||{},bkTags=bk.globalMemoHashtags||{},bkDaily=bk.dailyStats||{};
+    let curCardIds,curDecks,curExam,curMemo,curStudy,curNoteIds,curTagNames,curDays;
+    if(isGuest){
+      curCardIds=new Set(LS.load('fc_cards',[]).map(c=>String(c.id)));curDecks=LS.load('fc_decks',[])||[];
+      curExam=LS.load('fc_pastexam',null);curMemo=LS.load('fc_memo','');curStudy=LS.load('fc_study_memo','');
+      curNoteIds=new Set(Object.keys(LS.load('fc_examnotes',{})));curTagNames=new Set();curDays=new Set(Object.keys(LS.load('fc_daily',{})));
+    }else{
+      // 必ずサーバーの最新と比べる（端末キャッシュで比べると、あるものを「無い」と誤判定して古い内容で上書きしかねない）
+      const srv=q=>q.get({source:'server'});
+      say('今のデータを確認中...');
+      const ud=await srv(userDoc());const u=ud.exists?ud.data():{};
+      curDecks=u.decks||[];curExam=u.pastExam||null;curMemo=u.globalMemo||'';curStudy=u.studyMemo||'';
+      curCardIds=new Set();let cursor=null;
+      while(true){say(`今のカードを確認中... ${curCardIds.size}枚`);let q=cardsCol().limit(500);if(cursor)q=q.startAfter(cursor);const sn=await srv(q);sn.docs.forEach(d=>curCardIds.add(d.id));if(sn.docs.length<500)break;cursor=sn.docs[sn.docs.length-1]}
+      const [ns,ts,ds]=await Promise.all([srv(userDoc().collection('examNotes')),srv(memoTagsCol()),srv(dailyCol())]);
+      curNoteIds=new Set(ns.docs.map(d=>d.id));curTagNames=new Set(ts.docs.map(d=>d.data().name));curDays=new Set(ds.docs.map(d=>d.id));
+      Object.keys(u.dailyStats||{}).forEach(k=>curDays.add(k));
+    }
+    say('');
+    const addCards=bk.cards.filter(c=>c&&c.id!=null&&!curCardIds.has(String(c.id)));
+    const curDeckNames=new Set(curDecks.map(d=>d.name));
+    const addDecks=bk.decks.filter(d=>d&&d.name&&!curDeckNames.has(d.name));
+    // カードの属するデッキが無ければデッキも足す
+    for(const c of addCards){if(c.deck&&!curDeckNames.has(c.deck)&&!addDecks.some(d=>d.name===c.deck))addDecks.push({name:c.deck,subdecks:[]})}
+    const addNotes=Object.keys(bkNotes).filter(k=>bkNotes[k]&&!curNoteIds.has(k));
+    const addTags=isGuest?[]:Object.keys(bkTags).filter(k=>!curTagNames.has(k));
+    const addDays=Object.keys(bkDaily).filter(k=>!curDays.has(k));
+    const exam=restoreMergeExam(curExam,bk.pastExam);
+    const fillMemo=!curMemo&&!!bk.globalMemo,fillStudy=!curStudy&&!!bk.studyMemo;
+    const lines=[];
+    if(addCards.length)lines.push(`カード ${addCards.length}枚`);if(addDecks.length)lines.push(`デッキ ${addDecks.length}個（${addDecks.slice(0,5).map(d=>d.name).join('・')}${addDecks.length>5?' ほか':''}）`);
+    if(addNotes.length)lines.push(`過去問の解説 ${addNotes.length}件`);if(exam.n)lines.push(`過去問のチェック・目印 ${exam.n}件`);
+    if(addTags.length)lines.push(`タグ ${addTags.length}個`);if(addDays.length)lines.push(`日別の学習記録 ${addDays.length}日分`);
+    if(fillMemo)lines.push('メモ（今は空なので）');if(fillStudy)lines.push('学習メモ（今は空なので）');
+    done();
+    if(!lines.length){alert(`バックアップ（${when}）と比べて、足りないものはありませんでした。\n何も変更していません。`);return}
+    if(!confirm(`バックアップ（${when}）から、今は無いものだけを戻します。\n\n${lines.join('\n')}\n\n今あるカードや記録は変更しません（バックアップ時点より後の変更はそのまま残ります）。戻しますか？`))return;
+    showLoading();
+    const strip=c=>{const o={...c};delete o.id;return o};
+    if(isGuest){
+      const cs=LS.load('fc_cards',[]);addCards.forEach(c=>cs.push({...c,id:String(c.id)}));LS.save('fc_cards',cs);
+      const ds=LS.load('fc_decks',[])||[];addDecks.forEach(d=>ds.push({...d,publishedId:null}));LS.save('fc_decks',ds);
+      const nm=LS.load('fc_examnotes',{});addNotes.forEach(k=>nm[k]=bkNotes[k]);LS.save('fc_examnotes',nm);
+      const dm=LS.load('fc_daily',{});addDays.forEach(k=>dm[k]=bkDaily[k]);LS.save('fc_daily',dm);
+      if(exam.n)LS.save('fc_pastexam',exam.out);if(fillMemo)LS.save('fc_memo',bk.globalMemo);if(fillStudy)LS.save('fc_study_memo',bk.studyMemo);
+    }else{
+      const ops=[];
+      addCards.forEach(c=>ops.push(b=>b.set(cardsCol().doc(String(c.id)),strip(c))));
+      addNotes.forEach(k=>ops.push(b=>b.set(userDoc().collection('examNotes').doc(k),{text:bkNotes[k],updatedAt:firebase.firestore.FieldValue.serverTimestamp()})));
+      addTags.forEach(k=>ops.push(b=>b.set(memoTagsCol().doc(encodeURIComponent(k)),{name:k,content:bkTags[k]||''})));
+      addDays.forEach(k=>ops.push(b=>b.set(dailyCol().doc(k),bkDaily[k])));
+      for(let i=0;i<ops.length;i+=400){say(`戻しています... ${Math.min(i+400,ops.length)}/${ops.length}`);const b=db.batch();ops.slice(i,i+400).forEach(f=>f(b));await b.commit()}
+      const upd={};
+      if(addDecks.length)upd.decks=[...curDecks,...addDecks.map(d=>({...d,publishedId:null}))];
+      if(exam.n)upd.pastExam=exam.out;if(fillMemo)upd.globalMemo=bk.globalMemo;if(fillStudy)upd.studyMemo=bk.studyMemo;
+      if(Object.keys(upd).length)await userDoc().set(upd,{merge:true});
+      decks=upd.decks?migrateDecks(upd.decks):migrateDecks(curDecks);
+    }
+    if(isGuest)decks=migrateDecks(LS.load('fc_decks',null));
+    if(isGuest)cards=LS.load('fc_cards',[]);
+    say('件数を数え直しています...');await recountAllMeta();
+    done();
+    alert('戻しました。画面を読み込み直します。');location.reload();
+  }catch(e){console.error(e);done();alert('戻せませんでした（今のデータは変わっていないか、途中まで戻っています。もう一度実行しても重複はしません）\n'+(e&&e.code==='unavailable'?'通信が不安定です。電波の良い所でもう一度試してください。':(e&&e.message?e.message:String(e))))}
+}
+document.getElementById('restore-row').addEventListener('click',()=>{document.getElementById('settings-modal').classList.remove('active');document.getElementById('restore-file').click()});
+document.getElementById('restore-file').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)restoreFromBackup(f)});
 
 /* ========== 過去問解説（問/肢ごとのメモ。本文は examNotes サブコレクション、有無の目印だけ pastExam に保持） ========== */
 const noteCache={};
